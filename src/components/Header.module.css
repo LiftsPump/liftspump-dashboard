@@ -3,8 +3,8 @@
   align-items: center;
   justify-content: space-between;
   padding: 1rem 2rem;
-  background-color: #1AE080;
-  color: white;
+  background-color: #2E2B31;
+  color: #1AE080;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
@@ -14,10 +14,11 @@
 }
 
 .titleText {
-  font-size: 1.5rem;
+  font-size: 3rem;
   font-weight: bold;
   flex-grow: 1;
-  text-align: center;
+  text-align: left;
+  padding-left: 2rem;
 }
 
 .profileImage {

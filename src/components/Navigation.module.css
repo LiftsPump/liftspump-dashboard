@@ -1,8 +1,9 @@
 .listSelector {
   width: 100%;
-  max-width: 600px;
+  min-height: max-content;
+  height: 80%;
   margin: 2rem auto;
-  background-color: white;
+  background-color: #2E2B31;
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }

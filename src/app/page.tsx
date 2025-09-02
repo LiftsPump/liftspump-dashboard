@@ -7,10 +7,6 @@ export default function Home() {
     <div className={styles.page}>
       <Header />
       <main className={styles.main}>
-        <div className={styles.welcomeSection}>
-          <h1>Welcome to LiftsPump Dashboard</h1>
-          <p>Select a section to manage your fitness platform:</p>
-        </div>
         <Navigation />
       </main>
       <footer className={styles.footer}>
