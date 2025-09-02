@@ -1,7 +1,6 @@
 .listSelector {
-  width: 100%;
+  width: 15%;
   min-height: max-content;
-  height: 80%;
   margin: 2rem auto;
   background-color: #2E2B31;
   border-radius: 8px;
@@ -10,6 +9,7 @@
 
 .navButton {
   padding: 1rem 2rem;
+  background-color: #9E2B31;
   border-bottom: 1px solid #f0f0f0;
   transition: background-color 0.2s ease;
 }
