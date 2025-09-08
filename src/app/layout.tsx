@@ -9,7 +9,7 @@ import { useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import SupabaseProvider from "../components/SupabaseProvider"
 
-import { useSessionContext } from "@supabase/auth-helpers-react";
+import { useSessionContext, useSupabaseClient } from "@supabase/auth-helpers-react";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -75,6 +75,7 @@ export default function RootLayout({
 
   function AuthRedirect() {
     const { session, isLoading } = useSessionContext();
+    const supabase = useSupabaseClient();
     const pathname = usePathname();
     useEffect(() => {
       if (isLoading) return; // wait until session is resolved
@@ -93,6 +94,62 @@ export default function RootLayout({
         router.push(next);
       }
     }, [session, isLoading, pathname, router]);
+    
+    // Auto-create a trainer row on first login (no Connect)
+    useEffect(() => {
+      const ensureTrainer = async () => {
+        try {
+          if (!session?.user?.id) return;
+          const uid = session.user.id;
+          const { data } = await supabase
+            .from('trainer')
+            .select('trainer_id')
+            .eq('creator_id', uid)
+            .limit(1);
+          if (!data || !data.length) {
+            const newId = (typeof crypto !== 'undefined' && 'randomUUID' in crypto)
+              ? (crypto as any).randomUUID()
+              : Math.random().toString(36).slice(2) + Date.now().toString(36);
+            await supabase.from('trainer').insert({ creator_id: uid, trainer_id: newId });
+          }
+        } catch {}
+      };
+      ensureTrainer();
+    }, [session?.user?.id, supabase]);
+
+    // First-run redirect to onboarding if missing photo or tiers
+    useEffect(() => {
+      const checkOnboarding = async () => {
+        try {
+          if (!session?.user?.id) return;
+          const uid = session.user.id;
+          const { data: tRow } = await supabase
+            .from('trainer')
+            .select('trainer_id, photo_url')
+            .eq('creator_id', uid)
+            .limit(1);
+          const tId = (tRow?.[0]?.trainer_id as string) || null;
+          const photo = (tRow?.[0]?.photo_url as string) || null;
+          let tiersCount = 0;
+          if (tId) {
+            const { count } = await supabase
+              .from('tiers')
+              .select('*', { count: 'exact', head: true })
+              .eq('trainer', tId)
+              .eq('active', true);
+            tiersCount = typeof count === 'number' ? count : 0;
+          }
+          const should = !!tId && (tiersCount === 0 || !photo)
+          const isOnboarding = pathname === '/onboarding'
+          const isPublic = pathname === '/join' || pathname === '/login'
+          if (should && !isOnboarding && !isPublic) {
+            router.push('/onboarding')
+          }
+        } catch {}
+      }
+      checkOnboarding()
+    }, [session?.user?.id, pathname, supabase, router])
+
     return null;
   }
 

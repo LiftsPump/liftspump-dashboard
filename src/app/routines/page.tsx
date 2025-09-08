@@ -186,6 +186,16 @@ export default function Routines() {
     setSaving(false);
   };
 
+  const saveRoutineNotes = async () => {
+    if (!selected) return;
+    setSaving(true);
+    await supabase
+      .from('routines')
+      .update({ text: selected.text })
+      .eq('id', selected.id);
+    setSaving(false);
+  };
+
   const addExerciseFromCatalog = async (item: CatalogExercise) => {
     if (!selectedId || !item) return;
     setSaving(true);
@@ -201,6 +211,8 @@ export default function Routines() {
     setSaving(false);
   };
 
+  
+
   const saveExercise = async (ex: Exercise) => {
     setSaving(true);
     await supabase
@@ -209,6 +221,8 @@ export default function Routines() {
       .eq("id", ex.id);
     setSaving(false);
   };
+
+  
 
   const deleteExercise = async (exerciseId: string) => {
     setSaving(true);
@@ -225,6 +239,8 @@ export default function Routines() {
     setSaving(false);
   };
 
+  
+
   const addSet = async (exerciseId: string) => {
     setSaving(true);
     const uid = session?.user?.id;
@@ -239,6 +255,8 @@ export default function Routines() {
     setSaving(false);
   };
 
+  
+
   const saveSet = async (sr: SetRow) => {
     setSaving(true);
     await supabase
@@ -247,6 +265,8 @@ export default function Routines() {
       .eq("id", sr.id);
     setSaving(false);
   };
+
+  
 
   const deleteSet = async (exerciseId: string, setId: string) => {
     setSaving(true);
@@ -261,6 +281,8 @@ export default function Routines() {
     setSaving(false);
   };
 
+  
+
   const saveRoutineName = async () => {
     if (!selected) return;
     setSaving(true);
@@ -270,6 +292,28 @@ export default function Routines() {
       .eq("id", selected.id);
     setSaving(false);
   };
+
+  
+
+  const deleteRoutine = async () => {
+    if (!selected) return;
+    setSaving(true);
+    const { data: exs } = await supabase
+      .from('exercises')
+      .select('id')
+      .eq('routine_id', selected.id);
+    const exIds = (exs ?? []).map((e: any) => e.id);
+    if (exIds.length) {
+      await supabase.from('sets').delete().in('exercise_id', exIds as any);
+      await supabase.from('exercises').delete().in('id', exIds as any);
+    }
+    await supabase.from('routines').delete().eq('id', selected.id);
+    setRoutines(prev => prev.filter(r => r.id !== selected.id));
+    setSelectedId(null);
+    setSaving(false);
+  };
+
+  
 
   const addTrainerRoutine = async () => {
     setSaving(true);
@@ -296,6 +340,8 @@ export default function Routines() {
     }
     setSaving(false);
   };
+
+  
 
   return (
       <div className={styles.page}>
@@ -332,6 +378,8 @@ export default function Routines() {
                   <RoutineDetail
                     selected={selected as any}
                     onRename={(name) => selected && setRoutines((prev) => prev.map(r => r.id === selected.id ? { ...r, name } : r))}
+                    onChangeNotes={(text) => selected && setRoutines((prev) => prev.map(r => r.id === selected.id ? { ...r, text } : r))}
+                    onSaveRoutine={saveRoutineNotes}
                     exercises={exercises as any}
                     onChangeExercise={(id, patch) => setExercises((prev) => prev.map(p => p.id === id ? { ...p, ...patch } : p))}
                     onAddExercise={addExercise}
@@ -346,6 +394,11 @@ export default function Routines() {
                     catalogOptions={catalogOptions as any}
                     saving={saving}
                   />
+                  {selected && (
+                    <Box sx={{ mt: 1, display: 'flex', justifyContent: 'flex-end' }}>
+                      <Button size="small" color="error" startIcon={<DeleteIcon />} onClick={deleteRoutine} disabled={saving}>Delete routine</Button>
+                    </Box>
+                  )}
                 </Box>
               </Paper>
             </Box>

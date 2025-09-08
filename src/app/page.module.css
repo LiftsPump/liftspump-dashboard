@@ -13,6 +13,10 @@
   background-color: var(--background);
 }
 
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
 @media (prefers-color-scheme: dark) {
   .page {
     --gray-rgb: 255, 255, 255;
@@ -63,6 +67,7 @@
   background-color: #2E2B31;
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  animation: fadeIn 220ms ease-out;
 }
 
 .pageContent h1 {

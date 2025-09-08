@@ -135,22 +135,7 @@ export async function GET(req: NextRequest) {
       }]
     }
 
-    // Resolve a Connect destination and optional platform fee percent
-    let destination: string | undefined = connectFromQuery || process.env.STRIPE_CONNECT_ACCOUNT_ID || undefined
-    if (!destination && trainerId) {
-      try {
-        const supabase = createSupabaseServer()
-        const { data: tdata } = await supabase
-          .from('trainer')
-          .select('connect_account_id')
-          .eq('trainer_id', trainerId)
-          .limit(1)
-        const acc = (tdata?.[0]?.connect_account_id as string) || undefined
-        if (acc) destination = acc
-      } catch {}
-    }
-    const feePercentRaw = process.env.STRIPE_PLATFORM_FEE_PERCENT
-    const feePercent = feePercentRaw ? Number(feePercentRaw) : undefined
+    // Stripe Connect disabled per requirements — do not attach transfer_data
 
     const baseParams: any = {
       mode: 'subscription',
@@ -160,14 +145,7 @@ export async function GET(req: NextRequest) {
       cancel_url: cancel + (cancel.includes('?') ? '&' : '?') + 'status=cancel',
       line_items: lineItems,
     }
-    if (destination) {
-      baseParams.subscription_data = {
-        transfer_data: { destination },
-        ...(typeof feePercent === 'number' && !Number.isNaN(feePercent)
-          ? { application_fee_percent: feePercent }
-          : {}),
-      }
-    }
+    // No subscription_data.transfer_data added
 
     // If already subscribed, redirect to portal instead of creating a new subscription
     if (userId && trainerId) {

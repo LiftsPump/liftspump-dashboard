@@ -12,6 +12,7 @@ export default function UserDetail({
   assigning,
   assignedRoutines,
   userRoutines,
+  onKick,
 }: {
   selectedProfile: any;
   summary: string;
@@ -21,6 +22,7 @@ export default function UserDetail({
   assigning: boolean;
   assignedRoutines: any[];
   userRoutines: any[];
+  onKick?: () => void;
 }) {
   if (!selectedProfile) return null;
   // ---- quick metrics for chips ----
@@ -95,9 +97,15 @@ export default function UserDetail({
   return (
     <Paper elevation={1} sx={{ flex: 1, display: "flex", flexDirection: "column", borderRadius: 2, overflow: "hidden", bgcolor: "background.paper", color: "text.primary" }}>
       <Box sx={{ flex: 1, overflowY: "auto", p: 2 }}>
-        <Typography variant="h6" color="text.primary" sx={{ mb: 0.5, fontWeight: 700 }}>
-          {selectedProfile.first_name || selectedProfile.last_name ? `${selectedProfile.first_name ?? ''} ${selectedProfile.last_name ?? ''}` : (selectedProfile.username || selectedProfile.email || 'User')}
-        </Typography>
+        <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 0.5 }}>
+          <Typography variant="h6" color="text.primary" sx={{ fontWeight: 700 }}>
+            {selectedProfile.first_name || selectedProfile.last_name ? `${selectedProfile.first_name ?? ''} ${selectedProfile.last_name ?? ''}` : (selectedProfile.username || selectedProfile.email || 'User')}
+          </Typography>
+          <Box flex={1} />
+          {onKick && (
+            <Button size="small" color="error" variant="outlined" onClick={onKick}>Kick</Button>
+          )}
+        </Stack>
         <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
           {bmi != null && (
             <Chip size="small" label={`BMI ${bmi}${bmiCat ? ` · ${bmiCat}` : ''}`} variant="outlined" />

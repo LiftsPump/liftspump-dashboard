@@ -16,6 +16,8 @@ function JoinInner() {
   const preTier = params.get('tier');
   const autoStart = params.get('start') === '1';
   const ok = (status ?? "").toLowerCase() === "success";
+  const APP_STORE = process.env.NEXT_PUBLIC_APP_STORE_URL || '';
+  const PLAY_STORE = process.env.NEXT_PUBLIC_PLAY_STORE_URL || '';
 
   const supabase = useSupabaseClient();
   const session = useSession();
@@ -91,7 +93,15 @@ function JoinInner() {
                 <Typography variant="body2">Missing trainer_id</Typography>
               )}
               {ok && (
-                <Chip color="success" label="Subscription successful" />
+                <Stack direction={{ xs: 'column', md: 'row' }} spacing={1} alignItems={{ xs: 'stretch', md: 'center' }}>
+                  <Chip color="success" label="Subscription successful" />
+                  {APP_STORE ? (
+                    <Button href={APP_STORE} target="_blank" rel="noopener noreferrer" variant="contained" size="small">Open iOS App</Button>
+                  ) : null}
+                  {PLAY_STORE ? (
+                    <Button href={PLAY_STORE} target="_blank" rel="noopener noreferrer" variant="outlined" size="small">Open Android App</Button>
+                  ) : null}
+                </Stack>
               )}
               <Divider sx={{ my: 1 }} />
               <Typography variant="subtitle1">Choose a tier</Typography>

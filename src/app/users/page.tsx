@@ -405,6 +405,12 @@ export default function Users() {
                 assigning={assigning}
                 assignedRoutines={assignedRoutines as any}
                 userRoutines={userRoutines as any}
+                onKick={async () => {
+                  if (!trainerId || !selectedUser) return;
+                  await fetch('/api/subscriptions/kick', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ trainer_id: trainerId, user_id: selectedUser, immediate: true }) });
+                  setProfiles(prev => prev.filter(p => p.creator_id !== selectedUser));
+                  setSelectedUser(null);
+                }}
               />
             </Box>
           </div>
