@@ -377,9 +377,7 @@ export default function Routines() {
                 <Box sx={{ flex: 1, overflowY: "auto", p: 2 }}>
                   <RoutineDetail
                     selected={selected as any}
-                    onRename={(name) => selected && setRoutines((prev) => prev.map(r => r.id === selected.id ? { ...r, name } : r))}
-                    onChangeNotes={(text) => selected && setRoutines((prev) => prev.map(r => r.id === selected.id ? { ...r, text } : r))}
-                    onSaveRoutine={saveRoutineNotes}
+                    onRename={(name: string) => { if (selected) { setRoutines((prev) => prev.map(r => r.id === selected.id ? { ...r, name } : r)); } }}
                     exercises={exercises as any}
                     onChangeExercise={(id, patch) => setExercises((prev) => prev.map(p => p.id === id ? { ...p, ...patch } : p))}
                     onAddExercise={addExercise}

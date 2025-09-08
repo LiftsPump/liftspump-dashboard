@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
     if (!url || !key || !stripeKey) return NextResponse.json({ error: 'Server not configured' }, { status: 500 })
 
     const admin = createAdminClient(url, key)
-    const stripe = new Stripe(stripeKey, { apiVersion: '2024-06-20' })
+    const stripe = new Stripe(stripeKey, { apiVersion: '2025-08-27.basil' })
 
     // Find customer+sub
     const { data: cust } = await admin

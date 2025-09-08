@@ -184,15 +184,8 @@ export async function GET(req: NextRequest) {
     try {
       session = await stripe.checkout.sessions.create(baseParams)
     } catch (err: any) {
-      // If Connect destination is invalid/not found, retry without transfer_data so testing can proceed
-      const msg = String(err?.message || '')
-      if (destination && (msg.includes('No such destination') || msg.includes('transfer_data'))) {
-        const retry = { ...baseParams }
-        delete retry.subscription_data
-        session = await stripe.checkout.sessions.create(retry)
-      } else {
-        throw err
-      }
+      // Stripe Connect is not used. Surface the original error.
+      throw err
     }
 
     return NextResponse.redirect(session.url as string, { status: 303 })
