@@ -131,14 +131,7 @@ export default function RoutineDetail({
                       value={sr.weight ?? 0}
                       onChange={(e) => onChangeSet(ex.id, sr.id, { weight: Number(e.target.value) })}
                     />
-                    <Stack direction="row" alignItems="center" spacing={0.5}>
-                      <Checkbox checked={!!sr.completed} onChange={(e) => onChangeSet(ex.id, sr.id, { completed: e.target.checked })} />
-                      <Typography variant="caption">Done</Typography>
-                    </Stack>
-                    <Stack direction="row" alignItems="center" spacing={0.5}>
-                      <Checkbox checked={!!sr.pr} onChange={(e) => onChangeSet(ex.id, sr.id, { pr: e.target.checked })} />
-                      <Typography variant="caption">PR</Typography>
-                    </Stack>
+                    {/* Removed PR and Done local-only flags for cleaner UX */}
                     <IconButton onClick={() => onSaveSet(sr)} disabled={saving}>
                       <SaveIcon />
                     </IconButton>
