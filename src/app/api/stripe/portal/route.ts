@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getStripe, getOrigin } from '@/utils/stripe'
-import { cookies } from 'next/headers'
 import { createClient as createSupabaseServer } from '@/utils/supabase/server'
 
 export async function GET(req: NextRequest) {
@@ -22,7 +21,7 @@ export async function GET(req: NextRequest) {
 
   if (!customerId) {
     try {
-      const supabase = createSupabaseServer(cookies())
+      const supabase = createSupabaseServer()
       let resolvedUserId = userIdParam
       if (!resolvedUserId && emailParam) {
         const { data } = await supabase

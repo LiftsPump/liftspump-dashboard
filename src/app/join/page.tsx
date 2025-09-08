@@ -3,12 +3,12 @@ import Header from "../../components/Header";
 import styles from "../page.module.css";
 import { Box, Paper, Stack, Typography, Button, Chip, RadioGroup, FormControlLabel, Radio, Divider, CircularProgress, Alert } from "@mui/material";
 import { useSearchParams, useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, Suspense } from "react";
 import { useSupabaseClient, useSession } from "@supabase/auth-helpers-react";
 
 type Tier = { key: string; name: string; price: number; active: boolean };
 
-export default function JoinPage() {
+function JoinInner() {
   const params = useSearchParams();
   const router = useRouter();
   const trainerId = params.get("trainer_id");
@@ -128,5 +128,13 @@ export default function JoinPage() {
       </main>
       <footer className={styles.footer}></footer>
     </div>
+  );
+}
+
+export default function JoinPage() {
+  return (
+    <Suspense fallback={<div style={{ padding: 24 }}>Loading…</div>}>
+      <JoinInner />
+    </Suspense>
   );
 }

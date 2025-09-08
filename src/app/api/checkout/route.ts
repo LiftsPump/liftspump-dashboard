@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
   // Resolve a tier to use: try Supabase first, then fallback to local JSON
   let tiers: Tier[] = []
   try {
-    const supabase = createSupabaseServer(cookies())
+    const supabase = createSupabaseServer()
     if (trainerId) {
       const { data, error } = await supabase
         .from('tiers')
@@ -139,7 +139,7 @@ export async function GET(req: NextRequest) {
     let destination: string | undefined = connectFromQuery || process.env.STRIPE_CONNECT_ACCOUNT_ID || undefined
     if (!destination && trainerId) {
       try {
-        const supabase = createSupabaseServer(cookies())
+        const supabase = createSupabaseServer()
         const { data: tdata } = await supabase
           .from('trainer')
           .select('connect_account_id')

@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
 import { createClient as createSupabaseServer } from '@/utils/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 
@@ -23,7 +22,7 @@ export async function GET(req: NextRequest) {
         .order('price', { ascending: true })
       if (!error) rows = data ?? []
     } else {
-      const supabase = createSupabaseServer(cookies())
+      const supabase = createSupabaseServer()
       const { data } = await supabase
         .from('tiers')
         .select('key,name,price,active')
@@ -44,4 +43,3 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ tiers: [] })
   }
 }
-

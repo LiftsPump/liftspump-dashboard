@@ -5,11 +5,9 @@ import { createBrowserClient } from "@supabase/ssr";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 // Ensure a true singleton across HMR/fast refresh by storing on globalThis
-const globalForSupabase = globalThis as unknown as {
-  __supabase?: SupabaseClient;
-};
+const globalForSupabase = globalThis as unknown as { __supabase?: any };
 
-const supabase: SupabaseClient =
+const supabase =
   globalForSupabase.__supabase ??
   createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

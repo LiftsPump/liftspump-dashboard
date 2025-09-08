@@ -71,12 +71,12 @@ export async function POST(req: NextRequest) {
     }
 
     switch (event.type) {
-      case 'checkout.session.completed':
+      case 'checkout.session.completed': {
         // Persist customer/subscription if service role key is available
         try {
           const session = event.data.object as any
           const customerId = session.customer as string
-          const subscriptionId = session.subscription as string
+          const subscriptionId = (session.subscription as string) || null
           const trainerId = session.metadata?.trainer_id || null
           const tierKey = session.metadata?.tier_key || null
           const userId = session.metadata?.user_id || null
@@ -90,7 +90,7 @@ export async function POST(req: NextRequest) {
             const periodEnd = sub?.current_period_end ? new Date(sub.current_period_end * 1000).toISOString() : null
 
             // Resolve user if missing via email
-            let resolvedUser = userId
+            let resolvedUser = userId as string | null
             if (!resolvedUser) {
               const email = session.customer_details?.email as string | undefined
               if (email) {
@@ -99,11 +99,14 @@ export async function POST(req: NextRequest) {
               }
             }
 
-            await admin.from('stripe_customers').upsert({
-              customer_id: customerId,
-              trainer: trainerId,
-              user_id: resolvedUser,
-            }, { onConflict: 'customer_id' })
+            await admin.from('stripe_customers').upsert(
+              {
+                customer_id: customerId,
+                trainer: trainerId,
+                user_id: resolvedUser,
+              },
+              { onConflict: 'customer_id' }
+            )
 
             await upsertSub(customerId, trainerId, subscriptionId, tierKey)
 
@@ -122,15 +125,12 @@ export async function POST(req: NextRequest) {
               }
 
               // Link profile to trainer for easier querying in-app
-              await admin
-                .from('profile')
-                .update({ trainer: trainerId })
-                .eq('creator_id', resolvedUser)
-            }
+              await admin.from('profile').update({ trainer: trainerId }).eq('creator_id', resolvedUser)
             }
           }
         } catch {}
         break
+      }
       case 'customer.subscription.created':
       case 'customer.subscription.updated': {
         try {
