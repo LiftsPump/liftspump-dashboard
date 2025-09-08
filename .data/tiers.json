@@ -1,0 +1,25 @@
+{
+  "tiers": [
+    {
+      "key": "basic",
+      "name": "Basic",
+      "price": 9.99,
+      "active": true,
+      "stripePriceId": "price_6b31571762baa49291d3"
+    },
+    {
+      "key": "plus",
+      "name": "Plus",
+      "price": 19.99,
+      "active": true,
+      "stripePriceId": "price_acd72da40ae7602243f9"
+    },
+    {
+      "key": "pro",
+      "name": "Pro",
+      "price": 39.99,
+      "active": false,
+      "stripePriceId": "price_557bf9d312a490b2ed6a"
+    }
+  ]
+}

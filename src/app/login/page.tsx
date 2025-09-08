@@ -20,7 +20,12 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
-  const redirectTo = typeof window !== "undefined" ? `${window.location.origin}/` : undefined;
+  const redirectTo = typeof window !== "undefined" ? (() => {
+    const sp = new URLSearchParams(window.location.search);
+    const next = sp.get('next');
+    if (next && next.startsWith('/')) return `${window.location.origin}${next}`;
+    return `${window.location.origin}/`;
+  })() : undefined;
 
   const handleEmailPasswordAuth = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,9 +54,9 @@ export default function Login() {
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        // Successful sign in — navigate to the dashboard/home
-        if (typeof window !== "undefined") {
-          window.location.href = "/";
+        // Successful sign in — navigate to redirectTo (honors ?next=)
+        if (typeof window !== "undefined" && redirectTo) {
+          window.location.href = redirectTo;
         }
       }
     } catch (err: any) {

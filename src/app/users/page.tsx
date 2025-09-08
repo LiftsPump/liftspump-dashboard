@@ -18,10 +18,9 @@ import {
   Stack,
   Button,
   IconButton,
-  CssBaseline,
   Autocomplete
 } from "@mui/material";
-import { ThemeProvider, createTheme } from "@mui/material/styles";
+// Global theme is provided in RootLayout
 import Divider from "@mui/material/Divider";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -30,7 +29,10 @@ import SearchIcon from "@mui/icons-material/Search";
 import TodayIcon from "@mui/icons-material/Today";
 import FitnessCenterIcon from "@mui/icons-material/FitnessCenter";
 import SaveIcon from "@mui/icons-material/Save";
+import PersonAddAlt1Icon from "@mui/icons-material/PersonAddAlt1";
 import { useSupabaseClient, useSession, useSessionContext } from "@supabase/auth-helpers-react";
+import UsersSidebar from "./components/UsersSidebar";
+import UserDetail from "./components/UserDetail";
 
 // ---- Types ----
 
@@ -44,7 +46,6 @@ type Profile = {
   last_synced: string | null; // date
   height: number | null;
   weight: number | null;
-  text?: string | null; // freeform trainer notes/tags
   picture?: string | null; // if you add later
 };
 
@@ -66,7 +67,6 @@ type TrainerRow = {
   trainer_id: string; // random/opaque public id for trainers
   subs: string[] | null; // array of profile UUIDs (profile.creator_id)
   routines: string[] | null; // optional: array of routine ids
-  cost: number | null;
 };
 
 // ---- Supabase ----
@@ -76,15 +76,6 @@ const supabase = createClient(
 );
 
 // ---- Theme ----
-const theme = createTheme({
-  palette: {
-    mode: "dark",
-    primary: { main: "#1AE080" },
-    background: { default: "#121212", paper: "#181818" },
-    text: { primary: "#EAEAEA", secondary: "#B0B0B0" },
-    divider: "rgba(255,255,255,0.12)",
-  },
-});
 
 // ---- Helpers ----
 function initialsFromProfile(p: Profile) {
@@ -131,25 +122,26 @@ function bmiCategory(bmi: number | null): string | null {
   return "Obese";
 }
 
-// Consistency: average sessions per week over the past N weeks (default 8)
+// Consistency: average sessions per week over the past N weeks (default 8), only counting routines where type is "date"
 function avgSessionsPerWeek(routines: Routine[], weeks: number = 8): number {
   if (!routines.length || weeks <= 0) return 0;
   const now = new Date();
   const start = new Date(now);
   start.setDate(now.getDate() - weeks * 7);
-  const recent = routines.filter(r => r.date && new Date(r.date) >= start);
+  // Only consider explicitly logged-by-date sessions
+  const recent = routines.filter(r =>
+    r.date && ((r.type ?? '').toLowerCase() === 'date') && new Date(r.date) >= start
+  );
   if (!recent.length) return 0;
-  // group by ISO week number
   const byWeek = new Map<string, number>();
   for (const r of recent) {
-    if (!r.date) continue;
-    const d = new Date(r.date);
-    const key = isoWeekKey(d); // e.g., 2025-W36
+    const d = new Date(r.date as string);
+    const key = isoWeekKey(d);
     byWeek.set(key, (byWeek.get(key) ?? 0) + 1);
   }
   const weeksConsidered = Math.max(1, Math.min(weeks, byWeek.size || weeks));
   const total = Array.from(byWeek.values()).reduce((a, b) => a + b, 0);
-  return Math.round((total / weeksConsidered) * 10) / 10; // 1 decimal
+  return Math.round((total / weeksConsidered) * 10) / 10;
 }
 
 function isoWeekKey(d: Date): string {
@@ -206,6 +198,7 @@ export default function Users() {
   const [trainerRoutines, setTrainerRoutines] = useState<Routine[]>([]);
   const [assigning, setAssigning] = useState(false);
   const [routinePick, setRoutinePick] = useState<Routine | null>(null);
+  const [trainerId, setTrainerId] = useState<string | null>(null);
 
   // Supabase Auth Helpers
   const session = useSession();
@@ -229,7 +222,7 @@ export default function Users() {
       // Fetch trainer row to get subs
       const { data: trainerRows, error: trainerErr } = await supabase
         .from("trainer")
-        .select("creator_id, trainer_id, subs, routines, cost")
+        .select("creator_id, trainer_id, subs, routines")
         .eq("creator_id", uid)
         .limit(1);
 
@@ -245,13 +238,15 @@ export default function Users() {
         ? (trainerRows?.[0]?.subs as string[])
         : [];
       if (alive) setSubs(subsList);
+      const tId = (trainerRows?.[0]?.trainer_id as string) || null;
+      if (alive) setTrainerId(tId);
 
       // Fetch profiles for subs
       let profs: Profile[] = [];
       if (subsList.length) {
         const { data: profData, error: profErr } = await supabase
           .from("profile")
-          .select("creator_id, first_name, last_name, email, username, type, last_synced, height, weight, text")
+          .select("creator_id, first_name, last_name, email, username, type, last_synced, height, weight")
           .in("creator_id", subsList);
         if (profErr) {
           if (alive) {
@@ -315,6 +310,16 @@ export default function Users() {
   }, [profiles, query]);
 
   // ---- actions ----
+  const inviteUser = async () => {
+    if (!trainerId) return;
+    const base = typeof window !== 'undefined' ? window.location.origin : '';
+    const inviteUrl = `${base}/join?trainer_id=${encodeURIComponent(trainerId)}`;
+    try {
+      await navigator.clipboard?.writeText(inviteUrl);
+    } catch {}
+    // Open the public join page where the user can pick a tier, login, and subscribe
+    window.open(inviteUrl, "_blank", "noopener,noreferrer");
+  };
   const saveUserNotes = async (text: string) => {
     // optional: store a trainer note into profile.text if exists
     // placeholder for future edits
@@ -347,28 +352,6 @@ export default function Users() {
       // prepend into local history
       setUserRoutines((prev) => [ins as Routine, ...prev]);
       setSummary(basicSummarize([ins as Routine, ...userRoutines]));
-      // --- Append .Assigned tag to profile.text ---
-      try {
-        // fetch current text
-        const { data: curTextRow } = await supabase
-          .from("profile")
-          .select("text")
-          .eq("creator_id", selectedUser)
-          .single();
-        const alreadyTagged = (curTextRow?.text ?? "").includes(".Assigned");
-        const newText = alreadyTagged ? (curTextRow?.text ?? "") : `${(curTextRow?.text ?? "").trim()}${(curTextRow?.text ?? "").trim() ? " " : ""}.Assigned`;
-        if (!alreadyTagged) {
-          await supabase
-            .from("profile")
-            .update({ text: newText })
-            .eq("creator_id", selectedUser);
-          // reflect in local state
-          setProfiles(prev => prev.map(p => p.creator_id === selectedUser ? { ...p, text: newText } : p));
-        }
-      } catch (e) {
-        // non-fatal: ignore profile tag write errors
-        console.warn("Profile tag update failed", e);
-      }
     } catch (e: any) {
       setError(e.message ?? String(e));
     } finally {
@@ -377,10 +360,12 @@ export default function Users() {
   };
 
   const selectedProfile = useMemo(() => profiles.find(p => p.creator_id === selectedUser) || null, [profiles, selectedUser]);
+  const assignedRoutines = useMemo(
+    () => userRoutines.filter(r => (r.type ?? "").toLowerCase() === "assigned"),
+    [userRoutines]
+  );
 
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
       <div className={styles.page}>
         <Header />
         <main className={styles.main}>
@@ -398,159 +383,33 @@ export default function Users() {
                 overflow: "hidden",
               }}
             >
-              {/* LEFT: Users list */}
-              <Paper elevation={1} sx={{ minWidth: 320, width: 360, display: "flex", flexDirection: "column", borderRadius: 2, overflow: "hidden", bgcolor: "background.paper", color: "text.primary" }}>
-                <Box sx={{ p: 1.5, borderBottom: "2px solid", borderColor: "primary.main", position: "sticky", top: 0, bgcolor: "background.paper", zIndex: 1 }}>
-                  <Stack direction="row" spacing={1} alignItems="center">
-                    <TextField
-                      value={query}
-                      onChange={(e) => setQuery(e.target.value)}
-                      placeholder="Search users…"
-                      size="small"
-                      fullWidth
-                      sx={{
-                        flex: 1,
-                        "& .MuiInputBase-input": { color: "text.primary" },
-                        "& .MuiInputBase-input::placeholder": { color: "text.secondary", opacity: 0.7 }
-                      }}
-                      InputProps={{
-                        startAdornment: (
-                          <InputAdornment position="start">
-                            <SearchIcon fontSize="small" />
-                          </InputAdornment>
-                        ),
-                      }}
-                    />
-                  </Stack>
-                </Box>
-                <Box sx={{ overflowY: "auto", maxHeight: "80vh" }}>
-                  {loading && !authLoading && (
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 1, p: 2 }}>
-                      <CircularProgress size={20} />
-                      <span>Loading users…</span>
-                    </Box>
-                  )}
-                  {error && (
-                    <Alert severity="error" sx={{ m: 2 }}>{error}</Alert>
-                  )}
-                  {!loading && !error && filteredProfiles.map((p) => {
-                    const initials = initialsFromProfile(p);
-                    const subtitle = [p.username, p.email].filter(Boolean).join(" · ");
-                    return (
-                      <ListItemButton key={p.creator_id} selected={selectedUser === p.creator_id} onClick={() => setSelectedUser(p.creator_id)} sx={{ alignItems: "flex-start", py: 1.25 }}>
-                        <ListItemIcon sx={{ minWidth: 44 }}>
-                          <Avatar sx={{ width: 28, height: 28 }}>{initials}</Avatar>
-                        </ListItemIcon>
-                        <ListItemText
-                          primary={<Typography variant="subtitle1" noWrap>{[p.first_name, p.last_name].filter(Boolean).join(" ") || p.username || "Member"}</Typography>}
-                          secondary={
-                            <Stack direction="row" spacing={1} sx={{ mt: 0.5, flexWrap: "wrap" }}>
-                              {subtitle ? <Typography variant="caption" sx={{ opacity: 0.7 }} noWrap>{subtitle}</Typography> : null}
-                              {p.last_synced ? <Chip size="small" icon={<TodayIcon />} label={`Synced ${new Date(p.last_synced).toLocaleDateString()}`} variant="outlined" color="primary" sx={{ borderColor: "divider" }} /> : null}
-                            </Stack>
-                          }
-                        />
-                      </ListItemButton>
-                    );
-                  })}
-                  {!loading && !error && filteredProfiles.length === 0 && (
-                    <Box sx={{ p: 3, textAlign: "center", opacity: 0.7 }}>
-                      <Typography variant="body2">No users match your search.</Typography>
-                    </Box>
-                  )}
-                </Box>
-              </Paper>
+              <UsersSidebar
+                query={query}
+                onQueryChange={setQuery}
+                loading={loading}
+                authLoading={authLoading}
+                error={error}
+                filteredProfiles={filteredProfiles as any}
+                selectedUser={selectedUser}
+                onSelectUser={setSelectedUser}
+                trainerId={trainerId}
+                inviteUser={inviteUser}
+              />
 
-              {/* RIGHT: Details */}
-              <Paper elevation={1} sx={{ flex: 1, display: "flex", flexDirection: "column", borderRadius: 2, overflow: "hidden", bgcolor: "background.paper", color: "text.primary" }}>
-                <Box sx={{ flex: 1, overflowY: "auto", p: 2 }}>
-                  {selectedProfile ? (
-                    <>
-                      <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
-                        <Avatar sx={{ width: 40, height: 40 }}>{initialsFromProfile(selectedProfile)}</Avatar>
-                        <Box>
-                          <Typography variant="h6">{[selectedProfile.first_name, selectedProfile.last_name].filter(Boolean).join(" ") || selectedProfile.username || "Member"}</Typography>
-                          <Typography variant="body2" sx={{ opacity: 0.75 }}>{[selectedProfile.username, selectedProfile.email].filter(Boolean).join(" · ")}</Typography>
-                        </Box>
-                        {(() => {
-                          const bmi = computeBMI(selectedProfile.height ?? null, selectedProfile.weight ?? null);
-                          const cat = bmiCategory(bmi);
-                          return bmi != null ? (
-                            <Chip size="small" label={`BMI ${bmi}${cat ? ` · ${cat}` : ""}`} variant="outlined" />
-                          ) : null;
-                        })()}
-                        {(() => {
-                          const spw = avgSessionsPerWeek(userRoutines, 8);
-                          const lbl = consistencyLabel(spw);
-                          return (
-                            <Chip size="small" label={`Consistency ${spw}/wk · ${lbl}`} variant="outlined" />
-                          );
-                        })()}
-                        {(() => {
-                          const avgMins = avgDuration(userRoutines, 10);
-                          const lbl = strengthLabel(avgMins);
-                          return (
-                            <Chip size="small" label={`Endurance ${avgMins}m · ${lbl}`} variant="outlined" />
-                          );
-                        })()}
-                        {selectedProfile?.text?.includes('.Assigned') ? (
-                          <Chip size="small" label=".Assigned" variant="outlined" />
-                        ) : null}
-                      </Stack>
-
-                      <Paper sx={{ p: 2, mb: 2, border: "1px solid", borderColor: "divider", bgcolor: "background.paper" }}>
-                        <Typography variant="subtitle2" sx={{ mb: 0.5 }}>AI summary</Typography>
-                        <Typography variant="body2" sx={{ whiteSpace: "pre-wrap" }}>{summary || "No data yet."}</Typography>
-                      </Paper>
-
-                      <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
-                        <FitnessCenterIcon fontSize="small" />
-                        <Typography variant="subtitle1">Assign a trainer routine</Typography>
-                      </Stack>
-                      <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2 }}>
-                        <Autocomplete
-                          size="small"
-                          sx={{ minWidth: 320 }}
-                          options={trainerRoutines}
-                          getOptionLabel={(o) => o.name ?? "Untitled"}
-                          onChange={(e, val) => setRoutinePick(val as Routine)}
-                          renderInput={(params) => (
-                            <TextField {...params} placeholder="Pick one of your trainer routines…" />
-                          )}
-                          disabled={assigning || !trainerRoutines.length}
-                        />
-                        <Button onClick={assignRoutineToUser} disabled={!routinePick || assigning} variant="contained">Assign</Button>
-                      </Stack>
-
-                      <Divider sx={{ my: 1.5 }} />
-                      <Typography variant="subtitle1" sx={{ mb: 1 }}>Recent routines</Typography>
-                      <Stack spacing={1}>
-                        {userRoutines.slice(0, 10).map((r) => (
-                          <Paper key={r.id} sx={{ p: 1.25, border: "1px solid", borderColor: "divider", bgcolor: "background.paper" }}>
-                            <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between">
-                              <Box>
-                                <Typography variant="body1">{r.name || "Untitled"}</Typography>
-                                <Typography variant="caption" sx={{ opacity: 0.75 }}>{r.type} · {r.date ? new Date(r.date).toLocaleString() : "n/a"}</Typography>
-                              </Box>
-                              {r.duration != null ? (
-                                <Chip size="small" label={`${r.duration}`} />
-                              ) : null}
-                            </Stack>
-                          </Paper>
-                        ))}
-                        {!userRoutines.length && (
-                          <Typography variant="body2" sx={{ opacity: 0.7 }}>No routines yet.</Typography>
-                        )}
-                      </Stack>
-                    </>
-                  ) : null}
-                </Box>
-              </Paper>
+              <UserDetail
+                selectedProfile={selectedProfile as any}
+                summary={summary}
+                trainerRoutines={trainerRoutines as any}
+                onPickRoutine={(val) => setRoutinePick(val as any)}
+                onAssignRoutine={assignRoutineToUser}
+                assigning={assigning}
+                assignedRoutines={assignedRoutines as any}
+                userRoutines={userRoutines as any}
+              />
             </Box>
           </div>
         </main>
         <footer className={styles.footer}></footer>
       </div>
-    </ThemeProvider>
   );
 }

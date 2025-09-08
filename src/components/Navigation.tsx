@@ -21,6 +21,15 @@ const navigationItems: NavigationItem[] = [
   { id: 'payments', label: 'Payments', icon: 'P', path: '/payments' },
 ];
 
+const accentFor = (id: string) => {
+  switch (id) {
+    case 'routines': return '#60a5fa';
+    case 'users': return '#1AE080';
+    case 'payments': return '#a78bfa';
+    default: return '#1AE080';
+  }
+}
+
 export default function Navigation() {
   const router = useRouter();
 
@@ -37,11 +46,22 @@ export default function Navigation() {
           className={styles.navButton}
         >
           <ListItemIcon>
-            <Avatar sx={{ bgcolor: 'white', color: '#1AE080' }} className={styles.navIcon}>
+            <Avatar
+              className={styles.navIcon}
+              sx={{
+                bgcolor: accentFor(item.id),
+                color: '#0b0b0b',
+                fontWeight: 800,
+                boxShadow: '0 0 0 2px rgba(255,255,255,0.06) inset',
+              }}
+            >
               {item.icon}
             </Avatar>
           </ListItemIcon>
-          <ListItemText primary={item.label} />
+          <ListItemText
+            primary={item.label}
+            primaryTypographyProps={{ sx: { color: '#e5e7eb', fontWeight: 600 } }}
+          />
         </ListItemButton>
       ))}
     </List>

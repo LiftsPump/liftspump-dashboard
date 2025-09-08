@@ -1,21 +1,23 @@
 .listSelector {
-  min-width: min-content;
-  width: 15%;
-  min-height: max-content;
+  width: 240px;
   margin: 2rem auto;
-  background-color: #2E2B31;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  background-color: #121316;
+  color: #e5e7eb;
+  border-radius: 12px;
+  border: 1px solid #2a2a2a;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.35);
+  overflow: hidden;
+  background-image: radial-gradient(600px 180px at -20% -20%, rgba(26,224,128,0.08), transparent);
 }
 
 .navButton {
-  padding: 1rem 2rem;
-  border-bottom: 1px solid #f0f0f0;
-  transition: background-color 0.2s ease;
+  padding: 0.9rem 1rem;
+  border-bottom: 1px solid #2a2a2a;
+  transition: background 0.2s ease, transform 0.05s ease;
 }
 
 .navButton:hover {
-  background-color: #f8f9fa;
+  background-color: rgba(255,255,255,0.05);
 }
 
 .navButton:last-child {
@@ -23,7 +25,8 @@
 }
 
 .navIcon {
-  width: 40px;
-  height: 40px;
-  font-weight: bold;
+  width: 36px !important;
+  height: 36px !important;
+  font-weight: 800 !important;
+  border-radius: 50% !important;
 }

@@ -2,8 +2,8 @@
 import Header from "../../components/Header";
 import styles from "../page.module.css";
 import Navigation from "../../components/Navigation";
-import { Box, List, ListItemButton, ListItemIcon, ListItemText, CircularProgress, Alert, Typography, Paper, TextField, InputAdornment, Avatar, Chip, Stack, Button, IconButton, Checkbox, CssBaseline, Autocomplete } from "@mui/material";
-import { ThemeProvider, createTheme } from "@mui/material/styles";
+import { Box, List, ListItemButton, ListItemIcon, ListItemText, CircularProgress, Alert, Typography, Paper, TextField, InputAdornment, Avatar, Chip, Stack, Button, IconButton, Checkbox, Autocomplete } from "@mui/material";
+// Global theme is provided in RootLayout
 import Divider from '@mui/material/Divider';
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -16,6 +16,8 @@ import AddIcon from "@mui/icons-material/Add";
 import SaveIcon from "@mui/icons-material/Save";
 import DeleteIcon from "@mui/icons-material/Delete";
 import exercisesCatalog from "../../data/exercises.json";
+import RoutinesSidebar from "./components/RoutinesSidebar";
+import RoutineDetail from "./components/RoutineDetail";
 
 enum RoutineItem {
   Cardio = "Cardio",
@@ -69,16 +71,6 @@ type CatalogExercise = {
   images: string[];
 };
 
-
-const theme = createTheme({
-  palette: {
-    mode: "dark",
-    primary: { main: "#1AE080" },
-    background: { default: "#121212", paper: "#181818" },
-    text: { primary: "#EAEAEA", secondary: "#B0B0B0" },
-    divider: "rgba(255,255,255,0.12)",
-  },
-});
 
 export default function Routines() {
   const router = useRouter();
@@ -306,8 +298,6 @@ export default function Routines() {
   };
 
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
       <div className={styles.page}>
         <Header />
         <main className={styles.main}>
@@ -325,215 +315,37 @@ export default function Routines() {
                 overflow: "hidden",
               }}
             >
-              <Paper elevation={1} sx={{ minWidth: 320, width: 360, display: "flex", flexDirection: "column", borderRadius: 2, overflow: "hidden", bgcolor: "background.paper", color: "text.primary" }}>
-                <Box sx={{ p: 1.5, borderBottom: "2px solid", borderColor: "primary.main", position: "sticky", top: 0, bgcolor: "background.paper", zIndex: 1 }}>
-                  <Stack direction="row" spacing={1} alignItems="center">
-                    <TextField
-                      value={query}
-                      onChange={(e) => setQuery(e.target.value)}
-                      placeholder="Search routines…"
-                      size="small"
-                      fullWidth
-                      sx={{
-                        flex: 1,
-                        "& .MuiInputBase-input": { color: "text.primary" },
-                        "& .MuiInputBase-input::placeholder": { color: "text.secondary", opacity: 0.7 }
-                      }}
-                      InputLabelProps={{ style: { color: "text.primary" } }}
-                      InputProps={{
-                        startAdornment: (
-                          <InputAdornment position="start">
-                            <SearchIcon fontSize="small" />
-                          </InputAdornment>
-                        ),
-                      }}
-                    />
-                    <Button
-                      size="small"
-                      startIcon={<AddIcon />}
-                      onClick={addTrainerRoutine}
-                      disabled={saving}
-                      color="primary"
-                      variant="contained"
-                    >
-                      New Trainer
-                    </Button>
-                  </Stack>
-                </Box>
-                <Box sx={{ overflowY: "auto", maxHeight: "80vh" }}>
-                  {loading && !authLoading && (
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 1, p: 2 }}>
-                      <CircularProgress size={20} />
-                      <span>Loading routines…</span>
-                    </Box>
-                  )}
-                  {error && (
-                    <Alert severity="error" sx={{ m: 2 }}>{error}</Alert>
-                  )}
-                  {!loading && !error && filtered.map((item) => {
-                    const initials = (item.name ?? "?").split(" ").map(s => s[0]).slice(0,2).join("").toUpperCase();
-                    return (
-                      <ListItemButton key={item.id} selected={selectedId === item.id} onClick={() => setSelectedId(item.id)} sx={{ alignItems: "flex-start", py: 1.25 }}>
-                        <ListItemIcon sx={{ minWidth: 44 }}>
-                          <Avatar src={item.picture ?? undefined} sx={{ width: 28, height: 28 }}>
-                            {(!item.picture ? initials : null)}
-                          </Avatar>
-                        </ListItemIcon>
-                        <ListItemText
-                          primary={<Typography variant="subtitle1" noWrap>{item.name ?? "Untitled Routine"}</Typography>}
-                          secondary={
-                            <Stack direction="row" spacing={1} sx={{ mt: 0.5, flexWrap: "wrap" }}>
-                              {item.type ? <Chip size="small" icon={<FitnessCenterIcon />} label={String(item.type).charAt(0).toUpperCase() + String(item.type).slice(1)} variant="outlined" color="primary" sx={{ borderColor: "divider" }} /> : null}
-                              {item.duration != null ? <Chip size="small" icon={<AccessTimeIcon />} label={`${item.duration}`} variant="outlined" color="primary" sx={{ borderColor: "divider" }} /> : null}
-                              {item.date ? <Chip size="small" icon={<TodayIcon />} label={new Date(item.date).toLocaleDateString()} variant="outlined" color="primary" sx={{ borderColor: "divider" }} /> : null}
-                            </Stack>
-                          }
-                        />
-                      </ListItemButton>
-                    );
-                  })}
-                  {!loading && !error && filtered.length === 0 && (
-                    <Box sx={{ p: 3, textAlign: "center", opacity: 0.7 }}>
-                      <Typography variant="body2">No routines match your search.</Typography>
-                    </Box>
-                  )}
-                </Box>
-              </Paper>
+              <RoutinesSidebar
+                query={query}
+                onQueryChange={setQuery}
+                filtered={filtered as any}
+                selectedId={selectedId}
+                onSelect={setSelectedId}
+                addTrainerRoutine={addTrainerRoutine}
+                loading={loading}
+                error={error}
+                saving={saving}
+              />
 
               <Paper elevation={1} sx={{ flex: 1, display: "flex", flexDirection: "column", borderRadius: 2, overflow: "hidden", bgcolor: "background.paper", color: "text.primary" }}>
                 <Box sx={{ flex: 1, overflowY: "auto", p: 2 }}>
-                  {selected ? (
-                    <>
-                      <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2 }}>
-                        <TextField
-                          value={selected.name ?? ""}
-                          onChange={(e) => setRoutines((prev) => prev.map(r => r.id === selected.id ? { ...r, name: e.target.value } : r))}
-                          placeholder="Routine name"
-                          size="small"
-                          sx={{
-                            minWidth: 280,
-                            "& .MuiInputBase-input": { color: "text.primary" }
-                          }}
-                        />
-                        <IconButton onClick={saveRoutineName} disabled={saving} aria-label="Save routine name">
-                          <SaveIcon />
-                        </IconButton>
-                      </Stack>
-
-                      {selected.text ? (
-                        <Typography variant="body1" sx={{ whiteSpace: "pre-wrap", mb: 2 }}>{selected.text}</Typography>
-                      ) : (
-                        <Typography variant="body1" sx={{ opacity: 0.7, mb: 2 }}>No notes for this routine.</Typography>
-                      )}
-
-                      <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
-                        <Typography variant="h6">Exercises</Typography>
-                        <Stack direction="row" spacing={1} alignItems="center">
-                          <Autocomplete
-                            size="small"
-                            sx={{ minWidth: 260 }}
-                            options={catalogOptions}
-                            getOptionLabel={(o) => o.name}
-                            onChange={(e, val) => { if (val) addExerciseFromCatalog(val as CatalogExercise); }}
-                            renderInput={(params) => (
-                              <TextField {...params} placeholder="Add from catalog…" />
-                            )}
-                            disabled={saving || !selectedId}
-                          />
-                          <Button size="small" startIcon={<AddIcon />} onClick={addExercise} disabled={saving} color="primary" variant="outlined" sx={{ borderColor: "divider" }}>Add custom</Button>
-                        </Stack>
-                      </Stack>
-
-                      <Stack spacing={2}>
-                        {exercises.map((ex, idx) => (
-                          <Paper key={ex.id} sx={{ p: 1.5, bgcolor: "background.paper", border: "1px solid", borderColor: "divider" }}>
-                            <Stack spacing={1}>
-                              <Stack direction="row" spacing={1}>
-                                <TextField
-                                  value={ex.name ?? ""}
-                                  onChange={(e) => setExercises((prev) => prev.map(p => p.id === ex.id ? { ...p, name: e.target.value } : p))}
-                                  placeholder="Exercise name"
-                                  size="small"
-                                  sx={{
-                                    "& .MuiInputBase-input": { color: "text.primary" }
-                                  }}
-                                />
-                                <IconButton onClick={() => saveExercise(ex)} disabled={saving} aria-label="Save exercise">
-                                  <SaveIcon />
-                                </IconButton>
-                                <IconButton onClick={() => deleteExercise(ex.id)} disabled={saving} aria-label="Delete exercise">
-                                  <DeleteIcon />
-                                </IconButton>
-                              </Stack>
-                              <TextField
-                                value={ex.text ?? ""}
-                                onChange={(e) => setExercises((prev) => prev.map(p => p.id === ex.id ? { ...p, text: e.target.value } : p))}
-                                placeholder="Notes"
-                                size="small"
-                                multiline
-                                minRows={2}
-                                sx={{
-                                  "& .MuiInputBase-input": { color: "text.primary" }
-                                }}
-                              />
-
-                              <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mt: 1 }}>
-                                <Typography variant="subtitle2">Sets</Typography>
-                                <Button size="small" startIcon={<AddIcon />} onClick={() => addSet(ex.id)} disabled={saving} color="primary" variant="outlined" sx={{ borderColor: "divider" }}>Add set</Button>
-                              </Stack>
-
-                              <Stack spacing={1}>
-                                {(setsByExercise[ex.id] ?? []).map((sr) => (
-                                  <Stack key={sr.id} direction="row" spacing={1} alignItems="center">
-                                    <TextField
-                                      type="number"
-                                      size="small"
-                                      label="Reps"
-                                      value={sr.reps ?? 0}
-                                      onChange={(e) => {
-                                        const val = Number(e.target.value);
-                                        setSetsByExercise((prev) => ({ ...prev, [ex.id]: (prev[ex.id] ?? []).map(s => s.id === sr.id ? { ...s, reps: val } : s) }));
-                                      }}
-                                      sx={{
-                                        "& .MuiInputBase-input": { color: "text.primary" }
-                                      }}
-                                    />
-                                    <TextField
-                                      type="number"
-                                      size="small"
-                                      label="Weight"
-                                      value={sr.weight ?? 0}
-                                      onChange={(e) => {
-                                        const val = Number(e.target.value);
-                                        setSetsByExercise((prev) => ({ ...prev, [ex.id]: (prev[ex.id] ?? []).map(s => s.id === sr.id ? { ...s, weight: val } : s) }));
-                                      }}
-                                      sx={{
-                                        "& .MuiInputBase-input": { color: "text.primary" }
-                                      }}
-                                    />
-                                    <Stack direction="row" alignItems="center" spacing={0.5}>
-                                      <Checkbox checked={!!sr.completed} onChange={(e) => setSetsByExercise((prev) => ({ ...prev, [ex.id]: (prev[ex.id] ?? []).map(s => s.id === sr.id ? { ...s, completed: e.target.checked } : s) }))} />
-                                      <Typography variant="caption">Done</Typography>
-                                    </Stack>
-                                    <Stack direction="row" alignItems="center" spacing={0.5}>
-                                      <Checkbox checked={!!sr.pr} onChange={(e) => setSetsByExercise((prev) => ({ ...prev, [ex.id]: (prev[ex.id] ?? []).map(s => s.id === sr.id ? { ...s, pr: e.target.checked } : s) }))} />
-                                      <Typography variant="caption">PR</Typography>
-                                    </Stack>
-                                    <IconButton onClick={() => saveSet(sr)} disabled={saving}>
-                                      <SaveIcon />
-                                    </IconButton>
-                                    <IconButton onClick={() => deleteSet(ex.id, sr.id)} disabled={saving} aria-label="Delete set">
-                                      <DeleteIcon />
-                                    </IconButton>
-                                  </Stack>
-                                ))}
-                              </Stack>
-                            </Stack>
-                          </Paper>
-                        ))}
-                      </Stack>
-                    </>
-                  ) : null}
+                  <RoutineDetail
+                    selected={selected as any}
+                    onRename={(name) => selected && setRoutines((prev) => prev.map(r => r.id === selected.id ? { ...r, name } : r))}
+                    exercises={exercises as any}
+                    onChangeExercise={(id, patch) => setExercises((prev) => prev.map(p => p.id === id ? { ...p, ...patch } : p))}
+                    onAddExercise={addExercise}
+                    onAddFromCatalog={addExerciseFromCatalog as any}
+                    onSaveExercise={saveExercise as any}
+                    onDeleteExercise={deleteExercise}
+                    setsByExercise={setsByExercise as any}
+                    onAddSet={addSet}
+                    onChangeSet={(exerciseId, setId, patch) => setSetsByExercise((prev) => ({ ...prev, [exerciseId]: (prev[exerciseId] ?? []).map(s => s.id === setId ? { ...s, ...patch } : s) }))}
+                    onSaveSet={saveSet as any}
+                    onDeleteSet={deleteSet}
+                    catalogOptions={catalogOptions as any}
+                    saving={saving}
+                  />
                 </Box>
               </Paper>
             </Box>
@@ -541,6 +353,5 @@ export default function Routines() {
         </main>
         <footer className={styles.footer}></footer>
       </div>
-    </ThemeProvider>
   );
 }
