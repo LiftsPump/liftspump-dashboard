@@ -11,6 +11,7 @@ import ListItemButton from '@mui/material/ListItemButton';
 import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
 import styles from "./Navigation.module.css";
+import { accentFor } from './navigation-utils';
 
 interface NavigationItem {
   id: string;
@@ -25,16 +26,6 @@ const navigationItems: NavigationItem[] = [
   { id: 'users', label: 'Users', icon: <GroupIcon fontSize="small" />, path: '/users' },
   { id: 'payments', label: 'Payments', icon: <CreditCardIcon fontSize="small" />, path: '/payments' },
 ];
-
-const accentFor = (id: string) => {
-  switch (id) {
-    case 'routines': return '#60a5fa';
-    case 'videos': return '#f87171';
-    case 'users': return '#1AE080';
-    case 'payments': return '#a78bfa';
-    default: return '#1AE080';
-  }
-}
 
 export default function Navigation() {
   return (
