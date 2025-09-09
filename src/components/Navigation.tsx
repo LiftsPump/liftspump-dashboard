@@ -6,6 +6,8 @@ import FitnessCenterIcon from '@mui/icons-material/FitnessCenter';
 import VideoLibraryIcon from '@mui/icons-material/VideoLibrary';
 import GroupIcon from '@mui/icons-material/Group';
 import CreditCardIcon from '@mui/icons-material/CreditCard';
+import LibraryBooksIcon from '@mui/icons-material/LibraryBooks';
+import EventIcon from '@mui/icons-material/Event';
 import List from '@mui/material/List';
 import ListItemButton from '@mui/material/ListItemButton';
 import ListItemIcon from '@mui/material/ListItemIcon';
@@ -23,8 +25,10 @@ interface NavigationItem {
 const navigationItems: NavigationItem[] = [
   { id: 'routines', label: 'Routines', icon: <FitnessCenterIcon fontSize="small" />, path: '/routines' },
   { id: 'videos', label: 'Videos', icon: <VideoLibraryIcon fontSize="small" />, path: '/videos' },
+  { id: 'exercises', label: 'Exercises', icon: <LibraryBooksIcon fontSize="small" />, path: '/exercises' },
   { id: 'users', label: 'Users', icon: <GroupIcon fontSize="small" />, path: '/users' },
   { id: 'payments', label: 'Payments', icon: <CreditCardIcon fontSize="small" />, path: '/payments' },
+  { id: 'sessions', label: 'Sessions', icon: <EventIcon fontSize="small" />, path: '/sessions' },
 ];
 
 export default function Navigation() {

@@ -31,7 +31,7 @@ export default function RootLayout({
     palette: {
       mode: "dark",
       primary: { main: "#1AE080" },
-      background: { default: "#0f0f10", paper: "#121316" },
+      background: { default: "#0f0f10", paper: "rgba(255,255,255,0.06)" },
       text: { primary: "#EAEAEA", secondary: "#B0B0B0" },
       divider: "#2a2a2a",
     },
@@ -40,9 +40,12 @@ export default function RootLayout({
       MuiPaper: {
         styleOverrides: {
           root: {
-            backgroundColor: "#121316",
+            backgroundColor: "rgba(255,255,255,0.06)",
             color: "#fff",
-            border: "1px solid #2a2a2a",
+            border: "1px solid rgba(255,255,255,0.08)",
+            backdropFilter: "blur(10px)",
+            WebkitBackdropFilter: "blur(10px)",
+            boxShadow: "0 10px 30px rgba(0,0,0,0.35)",
             backgroundImage:
               "radial-gradient(800px 200px at -10% -20%, rgba(26,224,128,0.08), transparent)",
           },
@@ -50,8 +53,30 @@ export default function RootLayout({
       },
       MuiButton: {
         styleOverrides: {
-          root: { textTransform: "none", borderColor: "#2a2a2a" },
+          root: {
+            textTransform: "none",
+            borderColor: "#2a2a2a",
+            borderWidth: 1,
+            borderStyle: 'solid',
+            backgroundColor: "rgba(255,255,255,0.04)",
+            backdropFilter: "blur(8px)",
+            WebkitBackdropFilter: "blur(8px)",
+            '&:hover': {
+              backgroundColor: "rgba(255,255,255,0.08)",
+              borderColor: "#3a3a3a",
+            },
+          },
           containedPrimary: { color: "#0b0b0b" },
+        },
+      },
+      MuiMenu: {
+        styleOverrides: {
+          paper: {
+            backgroundColor: "rgba(17,17,17,0.5)",
+            border: "1px solid rgba(255,255,255,0.08)",
+            backdropFilter: "blur(10px)",
+            WebkitBackdropFilter: "blur(10px)",
+          },
         },
       },
       MuiChip: {
@@ -66,7 +91,12 @@ export default function RootLayout({
       MuiTextField: {
         styleOverrides: {
           root: {
-            '& .MuiOutlinedInput-notchedOutline': { borderColor: "#2a2a2a" },
+            '& .MuiOutlinedInput-root': {
+              backgroundColor: 'rgba(255,255,255,0.04)'
+            },
+            '& .MuiOutlinedInput-notchedOutline': { borderColor: "#3a3a3a" },
+            '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: "#4a4a4a" },
+            '& .Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: "#5a5a5a" },
           },
         },
       },

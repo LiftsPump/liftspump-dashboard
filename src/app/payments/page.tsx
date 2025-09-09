@@ -51,6 +51,8 @@ export default function PaymentsSettings() {
   const [saving, setSaving] = useState(false);
   const [snack, setSnack] = useState<string | null>(null);
   const [trainerPhoto, setTrainerPhoto] = useState<string | null>(null);
+  const [displayName, setDisplayName] = useState<string>("");
+  const [bio, setBio] = useState<string>("");
   const [uploading, setUploading] = useState(false);
   const [trainerId, setTrainerId] = useState<string | null>(null);
   const [connectAccountId, setConnectAccountId] = useState<string>("");
@@ -65,6 +67,19 @@ export default function PaymentsSettings() {
   const updateTier = (key: string, patch: Partial<Tier>) => {
     setTiers(prev => prev.map(t => (t.key === key ? { ...t, ...patch } : t)));
   };
+
+  const removeTier = async (idx: number, key: string) => {
+    // Update UI immediately
+    setTiers(prev => prev.filter((_, i) => i !== idx))
+    try {
+      if (!trainerId) return;
+      await fetch('/api/settings/tiers/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ trainer_id: trainerId, key }),
+      })
+    } catch {}
+  }
 
   // Load tiers from Supabase for this trainer
   useEffect(() => {
@@ -82,6 +97,18 @@ export default function PaymentsSettings() {
       if (alive) setTrainerId(tId);
       const acc = (tRow?.[0]?.connect_account_id as string) || "";
       if (alive) setConnectAccountId(acc);
+      // Try to load optional display fields; ignore if columns not present
+      try {
+        const { data: extra, error: extraErr } = await supabase
+          .from('trainer')
+          .select('display_name,bio')
+          .eq('creator_id', uid)
+          .limit(1);
+        if (!extraErr && extra && extra[0]) {
+          setDisplayName((extra[0].display_name as string) || "");
+          setBio((extra[0].bio as string) || "");
+        }
+      } catch {}
       if (!tId) return;
       const { data: tierRows } = await supabase
         .from('tiers')
@@ -117,10 +144,27 @@ export default function PaymentsSettings() {
         setTrainerId(genId);
       }
       if (trainerId) {
-        await supabase.from('trainer').update({ connect_account_id: connectAccountId || null }).eq('trainer_id', trainerId);
+        // Persist connect account id and optional display fields (ignore errors if columns absent)
+        try { await supabase.from('trainer').update({ connect_account_id: connectAccountId || null }).eq('trainer_id', trainerId); } catch {}
+        try { await supabase.from('trainer').update({ display_name: displayName || null, bio: bio || null }).eq('trainer_id', trainerId); } catch {}
       }
       if (trainerId) {
         // Try Supabase first
+        // Delete tiers removed locally
+        try {
+          const { data: existing } = await supabase
+            .from('tiers')
+            .select('key')
+            .eq('trainer', trainerId)
+          const existingKeys = new Set((existing ?? []).map((r: any) => String(r.key)))
+          const newKeys = new Set(tiers.map(t => t.key))
+          for (const key of existingKeys) {
+            if (!newKeys.has(key)) {
+              await supabase.from('tiers').delete().eq('trainer', trainerId).eq('key', key)
+            }
+          }
+        } catch {}
+
         for (const t of tiers) {
           const cents = Math.round(Number(t.price) * 100);
           // Prefer upsert with composite conflict if available
@@ -270,6 +314,22 @@ export default function PaymentsSettings() {
               </Stack>
               <Stack spacing={1} sx={{ mb: 2 }}>
                 <TextField
+                  label="Display name"
+                  placeholder="Your name"
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  size="small"
+                />
+                <TextField
+                  label="Bio"
+                  placeholder="A short description shown to users"
+                  value={bio}
+                  onChange={(e) => setBio(e.target.value)}
+                  size="small"
+                  multiline
+                  minRows={2}
+                />
+                <TextField
                   label="Trainer ID"
                   value={trainerId ?? ''}
                   size="small"
@@ -301,10 +361,16 @@ export default function PaymentsSettings() {
                   </Button>
                 </Stack>
                 <Stack spacing={1.5}>
-                  {tiers.map((t) => (
+                  {tiers.map((t, idx) => (
                     <Paper key={t.key} sx={{ p: 1.5, border: "1px solid", borderColor: "divider", bgcolor: "background.paper" }}>
                       <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} alignItems={{ xs: "stretch", sm: "center" }}>
-                        <Typography variant="body1" sx={{ minWidth: 100 }}>{t.name}</Typography>
+                        <TextField
+                          label="Tier name"
+                          value={t.name}
+                          onChange={(e) => updateTier(t.key, { name: e.target.value })}
+                          size="small"
+                          sx={{ maxWidth: 220 }}
+                        />
                         <TextField
                           type="number"
                           label="Monthly price"
@@ -326,9 +392,12 @@ export default function PaymentsSettings() {
                           label={t.active ? "Active" : "Inactive"}
                           sx={{ ml: { xs: 0, sm: 2 } }}
                         />
+                        <Box flex={1} />
+                        <Button color="error" variant="outlined" size="small" onClick={() => removeTier(idx, t.key)}>Remove</Button>
                       </Stack>
                     </Paper>
                   ))}
+                  <Button variant="outlined" size="small" onClick={() => setTiers(prev => ([...prev, { key: `tier_${Date.now()}`, name: 'New Tier', price: 10, active: true }]))}>+ Add tier</Button>
                 </Stack>
               </Paper>
 
