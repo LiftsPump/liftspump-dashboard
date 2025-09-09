@@ -25,3 +25,23 @@
   width: 40px;
   height: 40px;
 }
+
+@media (max-width: 600px) {
+  .header {
+    padding: 0.5rem 1rem;
+  }
+
+  .logo {
+    height: 32px;
+  }
+
+  .titleText {
+    font-size: 2rem;
+    padding-left: 1rem;
+  }
+
+  .profileImage {
+    width: 32px;
+    height: 32px;
+  }
+}
