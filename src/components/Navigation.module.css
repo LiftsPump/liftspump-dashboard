@@ -30,3 +30,21 @@
   font-weight: 800 !important;
   border-radius: 50% !important;
 }
+
+@media (max-width: 600px) {
+  .listSelector {
+    width: 100%;
+    margin: 1rem 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .navButton {
+    padding: 0.75rem 0.5rem;
+  }
+
+  .navIcon {
+    width: 32px !important;
+    height: 32px !important;
+  }
+}
