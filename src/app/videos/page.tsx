@@ -44,6 +44,7 @@ export default function VideosPage() {
   const [videos, setVideos] = useState<string[]>([]);
   const [newUrl, setNewUrl] = useState('');
   const [snack, setSnack] = useState<string | null>(null);
+  const [titles, setTitles] = useState<Record<string, string>>({});
 
   useEffect(() => {
     let alive = true;
@@ -110,6 +111,26 @@ export default function VideosPage() {
     setSaving(false);
   };
 
+  // Fetch YouTube titles via oEmbed for display
+  useEffect(() => {
+    let abort = false;
+    const fetchTitles = async () => {
+      const toFetch = videos.filter((v) => !titles[v]);
+      for (const url of toFetch) {
+        try {
+          const res = await fetch(`https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`);
+          if (!res.ok) throw new Error('oEmbed failed');
+          const data = await res.json();
+          if (!abort) setTitles((prev) => ({ ...prev, [url]: data?.title || 'YouTube video' }));
+        } catch {
+          if (!abort) setTitles((prev) => ({ ...prev, [url]: `Video ${videoId(url) || ''}`.trim() }));
+        }
+      }
+    };
+    if (videos.length) fetchTitles();
+    return () => { abort = true };
+  }, [videos]);
+
   return (
     <div className={styles.page}>
       <Header />
@@ -120,7 +141,14 @@ export default function VideosPage() {
             <LinkIcon />
             <Typography variant="h5" fontWeight={700}>Videos</Typography>
             <Box flex={1} />
-            <Button onClick={() => save(videos)} disabled={saving} variant="contained" size="small">{saving ? 'Saving…' : 'Save'}</Button>
+            <Button onClick={() => save(videos)} disabled={saving} variant="outlined" size="small" sx={{
+              borderColor: 'divider',
+              backgroundColor: 'rgba(255,255,255,0.06)',
+              backdropFilter: 'blur(8px)',
+              WebkitBackdropFilter: 'blur(8px)'
+            }}>
+              {saving ? 'Saving…' : 'Save'}
+            </Button>
           </Stack>
 
           <Paper sx={{ p: 2, border: '1px solid', borderColor: 'divider', bgcolor: 'background.paper' }}>
@@ -131,8 +159,20 @@ export default function VideosPage() {
                 placeholder="Paste unlisted YouTube URL (youtu.be or youtube.com/watch?v=)"
                 fullWidth
                 size="small"
+                variant="outlined"
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    backgroundColor: 'rgba(255,255,255,0.04)',
+                  },
+                  '& .MuiOutlinedInput-notchedOutline': { borderColor: '#3a3a3a' },
+                }}
               />
-              <Button startIcon={<AddIcon />} onClick={addVideo} variant="outlined" size="small">Add</Button>
+              <Button startIcon={<AddIcon />} onClick={addVideo} variant="outlined" size="small" sx={{
+                borderColor: 'divider',
+                backgroundColor: 'rgba(255,255,255,0.06)',
+                backdropFilter: 'blur(8px)',
+                WebkitBackdropFilter: 'blur(8px)'
+              }}>Add</Button>
             </Stack>
           </Paper>
 
@@ -147,9 +187,19 @@ export default function VideosPage() {
                       <Image src={thumb(v)!} alt="thumb" fill style={{ objectFit: 'cover' }} />
                     )}
                   </Box>
-                  <Typography variant="body2" sx={{ flex: 1, wordBreak: 'break-all' }}>{v}</Typography>
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                    <Typography variant="subtitle2" noWrap title={titles[v] || ''} sx={{ fontWeight: 600 }}>
+                      {titles[v] || 'Loading title…'}
+                    </Typography>
+                    <Typography variant="caption" sx={{ opacity: 0.8, display: 'block' }} noWrap title={v}>{v}</Typography>
+                  </Box>
                   <Stack direction="row" spacing={1}>
-                    <Button size="small" href={v} target="_blank" rel="noopener noreferrer">Open</Button>
+                    <Button size="small" href={v} target="_blank" rel="noopener noreferrer" variant="outlined" sx={{
+                      borderColor: 'divider',
+                      backgroundColor: 'rgba(255,255,255,0.06)',
+                      backdropFilter: 'blur(8px)',
+                      WebkitBackdropFilter: 'blur(8px)'
+                    }}>Open</Button>
                     <IconButton color="error" onClick={() => removeVideo(v)} aria-label="Delete video"><DeleteIcon /></IconButton>
                   </Stack>
                 </Stack>

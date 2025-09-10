@@ -3,9 +3,12 @@
   align-items: center;
   justify-content: space-between;
   padding: 1rem 2rem;
-  background-color: #2E2B31;
+  background: var(--glass-bg);
   color: #1AE080;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  border-bottom: 1px solid var(--glass-border);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: var(--glass-shadow);
 }
 
 .logo {

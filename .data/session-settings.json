@@ -1,0 +1,13 @@
+{
+  "25cdafb2-c1e2-4b88-838b-b3481881ec9e": {
+    "slotMinutes": 50,
+    "bufferMinutes": 10,
+    "workStart": 9,
+    "workEnd": 17,
+    "days": [
+      1,
+      3,
+      4
+    ]
+  }
+}

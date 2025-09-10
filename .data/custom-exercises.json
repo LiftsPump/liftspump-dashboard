@@ -1,0 +1,18 @@
+{
+  "25cdafb2-c1e2-4b88-838b-b3481881ec9e": [
+    {
+      "id": "custom_just_a_test_mfc7ui3l",
+      "name": "Just a test",
+      "category": "strength",
+      "equipment": "machine",
+      "primaryMuscles": [
+        "tricep"
+      ],
+      "secondaryMuscles": [],
+      "instructions": [
+        "Do it"
+      ],
+      "images": []
+    }
+  ]
+}
