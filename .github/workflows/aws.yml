@@ -33,7 +33,7 @@ on:
 env:
   AWS_REGION: us-east-2                   # set this to your preferred AWS region, e.g. us-west-1
   ECR_REPOSITORY: liftspump/dashboard           # set this to your Amazon ECR repository name
-  ECS_SERVICE: graceful-kangaroo-8fklfl/liftspump-dashboard-service-l5ygxjfm                 # set this to your Amazon ECS service name
+  ECS_SERVICE: liftspump-dashboard-service-l5ygxjfm                 # set this to your Amazon ECS service name
   ECS_CLUSTER: graceful-kangaroo-8fklfl                 # set this to your Amazon ECS cluster name
   ECS_TASK_DEFINITION: .aws/task-def.json # set this to the path to your Amazon ECS task definition
                                                # file, e.g. .aws/task-definition.json
@@ -85,6 +85,25 @@ jobs:
         task-definition: ${{ env.ECS_TASK_DEFINITION }}
         container-name: ${{ env.CONTAINER_NAME }}
         image: ${{ steps.build-image.outputs.image }}
+
+    - name: Assert exact cluster/service
+      run: |
+        set -euo pipefail
+        echo "Account should be 236783367292, region us-east-2"
+        aws sts get-caller-identity
+        echo "ECS_CLUSTER='${{ env.ECS_CLUSTER }}'"
+        echo "ECS_SERVICE='${{ env.ECS_SERVICE }}'"
+
+        # Show bytes to catch hidden chars (\r, spaces, zero-width)
+        printf 'cluster bytes: '; printf '%s' "${{ env.ECS_CLUSTER }}" | od -An -t x1
+        printf 'service bytes: '; printf '%s' "${{ env.ECS_SERVICE }}" | od -An -t x1
+
+        # Trim and re-check existence
+        cluster="$(printf '%s' "${{ env.ECS_CLUSTER }}" | tr -d '\r' | xargs)"
+        service="$(printf '%s' "${{ env.ECS_SERVICE }}" | tr -d '\r' | xargs)"
+
+        echo "Describing: cluster='${cluster}' service='${service}'"
+        aws ecs describe-services --cluster "$cluster" --services "$service" --region us-east-2
 
     - name: Deploy Amazon ECS task definition
       uses: aws-actions/amazon-ecs-deploy-task-definition@v1
