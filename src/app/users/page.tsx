@@ -349,9 +349,61 @@ export default function Users() {
         .select("id, name, type, text, picture, days, weekly, date, duration, creator_id")
         .single();
       if (error) throw error;
+      const newRoutine = ins as Routine;
+
+      // Fetch source exercises for the picked trainer routine
+      const { data: srcExercises, error: exErr } = await supabase
+        .from("exercises")
+        .select("id,name,text,eCode")
+        .eq("routine_id", src.id)
+        .order("name", { ascending: true });
+      if (exErr) throw exErr;
+
+      // For each exercise, insert a copy for the new routine and then copy its sets
+      if (srcExercises && srcExercises.length) {
+        for (const ex of srcExercises as any[]) {
+          const { data: newEx, error: inExErr } = await supabase
+            .from("exercises")
+            .insert({
+              name: ex.name,
+              text: ex.text,
+              eCode: ex.eCode ?? null,
+              routine_id: newRoutine.id,
+              creator_id: selectedUser,
+            })
+            .select("id")
+            .single();
+          if (inExErr) throw inExErr;
+
+          // Load sets for source exercise
+          const { data: srcSets, error: setErr } = await supabase
+            .from("sets")
+            .select("reps,weight,completed,pr")
+            .eq("exercise_id", ex.id)
+            .order("id", { ascending: true });
+          if (setErr) throw setErr;
+
+          if (srcSets && srcSets.length) {
+            // Insert sets pointing to new exercise id
+            const rows = (srcSets as any[]).map((s) => ({
+              reps: s.reps ?? null,
+              weight: s.weight ?? null,
+              completed: s.completed ?? null,
+              pr: s.pr ?? null,
+              exercise_id: (newEx as any).id,
+              creator_id: selectedUser,
+            }));
+            const { error: insSetErr } = await supabase
+              .from("sets")
+              .insert(rows);
+            if (insSetErr) throw insSetErr;
+          }
+        }
+      }
+
       // prepend into local history
-      setUserRoutines((prev) => [ins as Routine, ...prev]);
-      setSummary(basicSummarize([ins as Routine, ...userRoutines]));
+      setUserRoutines((prev) => [newRoutine, ...prev]);
+      setSummary(basicSummarize([newRoutine, ...userRoutines]));
     } catch (e: any) {
       setError(e.message ?? String(e));
     } finally {

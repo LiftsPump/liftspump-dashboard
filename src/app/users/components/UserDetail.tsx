@@ -2,6 +2,7 @@
 import { Paper, Box, Stack, Typography, Chip, Divider, TextField, Autocomplete, Button } from "@mui/material";
 import FitnessCenterIcon from "@mui/icons-material/FitnessCenter";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
+import DeleteIcon from "@mui/icons-material/Delete"
 
 export default function UserDetail({
   selectedProfile,
@@ -151,6 +152,9 @@ export default function UserDetail({
                   <Typography variant="body1">{r.name || "Untitled"}</Typography>
                   <Typography variant="body1">Assigned · {r.date ? new Date(r.date).toLocaleString() : "n/a"}{r.weekly ? ` · ${r.weekly}/wk` : ""}{r.days ? ` · ${r.days} day plan` : ""}</Typography>
                 </Box>
+                <Button onClick={} variant="contained">
+                  <DeleteIcon/>
+                </Button>
                 {r.duration != null ? (
                   <Chip size="small" label={`${r.duration}m`} />
                 ) : null}
