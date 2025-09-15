@@ -199,6 +199,7 @@ export default function Users() {
   const [assigning, setAssigning] = useState(false);
   const [routinePick, setRoutinePick] = useState<Routine | null>(null);
   const [trainerId, setTrainerId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
   // Supabase Auth Helpers
   const session = useSession();
@@ -410,6 +411,64 @@ export default function Users() {
       setAssigning(false);
     }
   };
+const deleteAssignedRoutine = async (routineId: string) => {
+  setDeletingId(routineId);
+  try {
+    // optional safety: only allow deleting routines owned by selected user and of type 'assigned'
+    const { data: routineRow, error: fetchErr } = await supabase
+      .from("routines")
+      .select("id, creator_id, type")
+      .eq("id", routineId)
+      .single();
+
+    if (fetchErr) throw fetchErr;
+    if (!routineRow) throw new Error("Routine not found");
+    if (selectedUser && routineRow.creator_id !== selectedUser) {
+      throw new Error("Cannot delete a routine not owned by the selected user");
+    }
+
+    // Fetch exercises for this routine
+    const { data: exRows, error: exErr } = await supabase
+      .from("exercises")
+      .select("id")
+      .eq("routine_id", routineId);
+    if (exErr) throw exErr;
+
+    const exIds = (exRows ?? []).map((e: any) => e.id);
+
+    if (exIds.length) {
+      // Delete sets tied to those exercises
+      const { error: delSetsErr } = await supabase
+        .from("sets")
+        .delete()
+        .in("exercise_id", exIds);
+      if (delSetsErr) throw delSetsErr;
+
+      // Delete the exercises
+      const { error: delExErr } = await supabase
+        .from("exercises")
+        .delete()
+        .in("id", exIds);
+      if (delExErr) throw delExErr;
+    }
+
+    // Delete the routine itself
+    const { error: delRoutineErr } = await supabase
+      .from("routines")
+      .delete()
+      .eq("id", routineId);
+    if (delRoutineErr) throw delRoutineErr;
+
+    // Update local state
+    const next = userRoutines.filter((r) => r.id !== routineId);
+    setUserRoutines(next);
+    setSummary(basicSummarize(next));
+  } catch (e: any) {
+    setError(e.message ?? String(e));
+  } finally {
+    setDeletingId(null);
+  }
+};
 
   const selectedProfile = useMemo(() => profiles.find(p => p.creator_id === selectedUser) || null, [profiles, selectedUser]);
   const assignedRoutines = useMemo(
@@ -457,6 +516,7 @@ export default function Users() {
                 assigning={assigning}
                 assignedRoutines={assignedRoutines as any}
                 userRoutines={userRoutines as any}
+                onDeleteAssignedRoutine={deleteAssignedRoutine}
                 onKick={async () => {
                   if (!trainerId || !selectedUser) return;
                   await fetch('/api/subscriptions/kick', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ trainer_id: trainerId, user_id: selectedUser, immediate: true }) });
