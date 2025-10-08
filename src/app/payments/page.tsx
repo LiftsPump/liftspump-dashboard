@@ -335,15 +335,8 @@ export default function PaymentsSettings() {
                   size="small"
                   disabled
                 />
-                <TextField
-                  label="Connect account ID (acct_...)"
-                  placeholder="acct_..."
-                  value={connectAccountId}
-                  onChange={(e) => setConnectAccountId(e.target.value)}
-                  size="small"
-                />
                 {!trainerId && (
-                  <Button onClick={createTrainerIfMissing} variant="contained" size="small">Create trainer</Button>
+                  <Button onClick={createTrainerIfMissing} variant="outlined" size="small">Create trainer</Button>
                 )}
               </Stack>
               <Typography variant="body2" sx={{ opacity: 0.8 }}>
