@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient as createServerSupabase } from "@/utils/supabase/server";
 
-export async function DELETE(req: NextRequest, { params }: { params: { routineId: string } }) {
+export async function DELETE(
+  req: NextRequest,
+  // @ts-ignore
+  { params }: { params: Promise<{ routineId: string }> }
+)  {
   const supabase = createServerSupabase();
-  const routineId = params.routineId;
+  const routineId = (await params).routineId;
   const url = new URL(req.url);
   const userId = url.searchParams.get("user_id");
 
