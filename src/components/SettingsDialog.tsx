@@ -18,12 +18,11 @@ export default function SettingsDialog({ open, onClose, onPhotoChanged }: Props)
       if (!uid || !open) return;
       const { data } = await supabase
         .from('trainer')
-        .select('trainer_id, photo_url')
+        .select('trainer_id')
         .eq('creator_id', uid)
         .limit(1);
       const tId = (data?.[0]?.trainer_id as string) || null;
       if (alive) setTrainerId(tId);
-      if (alive) setPhotoUrl((data?.[0]?.photo_url as string) || null);
     };
     load();
     return () => { alive = false };
@@ -41,7 +40,7 @@ export default function SettingsDialog({ open, onClose, onPhotoChanged }: Props)
       const { data: pub } = supabase.storage.from('trainer-photos').getPublicUrl(path);
       const url = pub?.publicUrl || null;
       if (url) {
-        await supabase.from('trainer').update({ photo_url: url }).eq('trainer_id', trainerId);
+        //await supabase.from('trainer').update({ photo_url: url }).eq('trainer_id', trainerId);
         setPhotoUrl(url);
         onPhotoChanged?.(url);
       }

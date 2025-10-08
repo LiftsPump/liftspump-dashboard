@@ -1,5 +1,4 @@
 'use client';
-import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { AppRouterCacheProvider } from "@mui/material-nextjs/v13-appRouter";
 import { ThemeProvider, createTheme } from "@mui/material/styles";
@@ -155,11 +154,10 @@ export default function RootLayout({
           const uid = session.user.id;
           const { data: tRow } = await supabase
             .from('trainer')
-            .select('trainer_id, photo_url')
+            .select('trainer_id')
             .eq('creator_id', uid)
             .limit(1);
           const tId = (tRow?.[0]?.trainer_id as string) || null;
-          const photo = (tRow?.[0]?.photo_url as string) || null;
           let tiersCount = 0;
           if (tId) {
             const { count } = await supabase
@@ -169,7 +167,7 @@ export default function RootLayout({
               .eq('active', true);
             tiersCount = typeof count === 'number' ? count : 0;
           }
-          const should = !!tId && (tiersCount === 0 || !photo)
+          const should = !!tId && (tiersCount === 0)
           const isOnboarding = pathname === '/onboarding'
           const isPublic = pathname === '/join' || pathname === '/login'
           if (should && !isOnboarding && !isPublic) {

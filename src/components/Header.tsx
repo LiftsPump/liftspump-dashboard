@@ -31,12 +31,12 @@ export default function Header() {
     const load = async () => {
       const uid = session?.user?.id || null;
       if (!uid) return;
-      const { data } = await supabase
+      /*const { data } = await supabase
         .from('trainer')
         .select('photo_url')
         .eq('creator_id', uid)
         .limit(1);
-      if (alive) setPhotoUrl((data?.[0]?.photo_url as string) || null);
+      if (alive) setPhotoUrl((data?.[0]?.photo_url as string) || null);*/
     };
     load();
     return () => { alive = false };

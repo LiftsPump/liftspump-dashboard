@@ -45,7 +45,7 @@ export default function UsersSidebar({
               ),
             }}
           />
-          <Button onClick={inviteUser} variant="contained" size="small" startIcon={<PersonAddAlt1Icon />} disabled={!trainerId}>
+          <Button onClick={inviteUser} variant="outlined" size="small" startIcon={<PersonAddAlt1Icon />} disabled={!trainerId}>
             Invite
           </Button>
         </Stack>
@@ -64,7 +64,7 @@ export default function UsersSidebar({
           return (
             <ListItemButton key={p.creator_id} selected={selectedUser === p.creator_id} onClick={() => onSelectUser(p.creator_id)} sx={{ alignItems: "flex-start", py: 1.25 }}>
               <ListItemIcon sx={{ minWidth: 44 }}>
-                <Avatar sx={{ width: 28, height: 28 }}>{initials}</Avatar>
+                <Avatar sx={{ width: 28, height: 28, fontSize: 14 }}>{initials}</Avatar>
               </ListItemIcon>
               <ListItemText
                 primary={<Typography variant="subtitle1" noWrap>{[p.first_name, p.last_name].filter(Boolean).join(" ") || p.username || p.email || "User"}</Typography>}

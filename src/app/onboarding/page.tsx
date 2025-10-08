@@ -29,13 +29,12 @@ export default function OnboardingPage() {
       if (!uid) return;
       const { data } = await supabase
         .from('trainer')
-        .select('trainer_id, photo_url, connect_account_id')
+        .select('trainer_id, connect_account_id')
         .eq('creator_id', uid)
         .limit(1);
       if (!alive) return;
       const tId = (data?.[0]?.trainer_id as string) || null;
       setTrainerId(tId);
-      setPhotoUrl((data?.[0]?.photo_url as string) || null);
       setConnectId((data?.[0]?.connect_account_id as string) || "");
     };
     load();
@@ -76,7 +75,7 @@ export default function OnboardingPage() {
       const { data: pub } = supabase.storage.from('trainer-photos').getPublicUrl(path);
       const url = pub?.publicUrl || null;
       if (url) {
-        await supabase.from('trainer').update({ photo_url: url }).eq('trainer_id', trainerId);
+        //await supabase.from('trainer').update({ photo_url: url }).eq('trainer_id', trainerId);
         setPhotoUrl(url); setSnack('Photo uploaded');
       }
     } finally { setSaving(false); }

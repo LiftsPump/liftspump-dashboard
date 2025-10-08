@@ -294,7 +294,7 @@ export default function PaymentsSettings() {
             <Chip label={`${totalActive} active tier${totalActive === 1 ? "" : "s"}`} size="small" />
             <Box flex={1} />
             <Button onClick={handleStripePortal} startIcon={<PaymentsIcon />} variant="outlined" size="small">Billing Portal</Button>
-            <Button onClick={handleSave} startIcon={<SaveIcon />} disabled={saving} variant="contained" size="small">
+            <Button onClick={handleSave} startIcon={<SaveIcon />} disabled={saving} variant="outlined" size="small">
               {saving ? "Saving…" : "Save"}
             </Button>
           </Stack>
@@ -356,9 +356,6 @@ export default function PaymentsSettings() {
               <Paper sx={{ p: 2, border: "1px solid", borderColor: "divider", bgcolor: "background.paper", mb: 2 }}>
                 <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
                   <Typography variant="h6" fontWeight={700}>Subscription tiers</Typography>
-                  <Button onClick={seedDefaultTiers} disabled={seeding || !trainerId} size="small" variant="outlined">
-                    {seeding ? 'Seeding…' : 'Seed defaults'}
-                  </Button>
                 </Stack>
                 <Stack spacing={1.5}>
                   {tiers.map((t, idx) => (

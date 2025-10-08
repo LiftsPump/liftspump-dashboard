@@ -10,6 +10,7 @@ type ExerciseRow = {
   primary_muscles: string[]
   secondary_muscles: string[]
   instructions: string[]
+  ecode: string
   images: string[]
 }
 
@@ -21,7 +22,7 @@ export async function GET(req: NextRequest) {
   const supabase = createSupabaseServer()
   const { data, error } = await supabase
     .from('exercises_custom')
-    .select('id,trainer,name,category,equipment,primary_muscles,secondary_muscles,instructions,images')
+    .select('id,trainer,name,category,equipment,primary_muscles,secondary_muscles,instructions,ecode,images')
     .eq('trainer', trainer)
     .order('created_at', { ascending: false })
   if (error) return NextResponse.json({ exercises: [] })
@@ -33,6 +34,7 @@ export async function GET(req: NextRequest) {
     primaryMuscles: r.primary_muscles || [],
     secondaryMuscles: r.secondary_muscles || [],
     instructions: r.instructions || [],
+    ecode: r.ecode || "",
     images: r.images || [],
   }))
   return NextResponse.json({ exercises: mapped })
@@ -46,6 +48,7 @@ export async function POST(req: NextRequest) {
 
   const supabase = createSupabaseServer()
   // Upsert based on id when provided, else insert new
+  // TODO make sure exercise ecode is unique to that trainer
   const row = {
     id: exercise.id || undefined,
     trainer,
@@ -55,6 +58,7 @@ export async function POST(req: NextRequest) {
     primary_muscles: Array.isArray(exercise.primaryMuscles) ? exercise.primaryMuscles : [],
     secondary_muscles: Array.isArray(exercise.secondaryMuscles) ? exercise.secondaryMuscles : [],
     instructions: Array.isArray(exercise.instructions) ? exercise.instructions : [],
+    ecode: String(trainer+exercise.ecode),
     images: Array.isArray(exercise.images) ? exercise.images : [],
   }
   let res
@@ -74,6 +78,7 @@ export async function POST(req: NextRequest) {
     primaryMuscles: r.primary_muscles || [],
     secondaryMuscles: r.secondary_muscles || [],
     instructions: r.instructions || [],
+    ecode: r.ecode || "",
     images: r.images || [],
   }
   return NextResponse.json({ exercise: saved })

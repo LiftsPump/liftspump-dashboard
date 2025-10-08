@@ -18,6 +18,7 @@ type Exercise = {
   primaryMuscles?: string[]
   secondaryMuscles?: string[]
   instructions?: string[]
+  ecode: string
   images?: string[]
   source?: 'builtin' | 'custom'
 }
@@ -61,7 +62,7 @@ export default function ExercisesPage() {
   }, [])
 
   // Form state for new/edit custom exercise
-  const [form, setForm] = useState<Partial<Exercise>>({ name: '', category: 'strength', equipment: '', primaryMuscles: [], secondaryMuscles: [], instructions: [], images: [] })
+  const [form, setForm] = useState<Partial<Exercise>>({ name: '', category: 'strength', equipment: '', primaryMuscles: [], secondaryMuscles: [], ecode: "", instructions: [], images: [] })
   const editingId = (form.id as string | undefined) || null
 
   useEffect(() => {
@@ -130,9 +131,11 @@ export default function ExercisesPage() {
         primaryMuscles: String((form.primaryMuscles || []).join(',')).split(',').map(s => s.trim()).filter(Boolean),
         secondaryMuscles: String((form.secondaryMuscles || []).join(',')).split(',').map(s => s.trim()).filter(Boolean),
         instructions: String((form.instructions || []).join('\n')).split('\n').map(s => s.trim()).filter(Boolean),
+        ecode: String(form.ecode || '').trim(),
         images: String((form.images || []).join(',')).split(',').map(s => s.trim()).filter(Boolean),
       }
       if (!payload.name) { setSnack('Name is required'); return }
+      if (!payload.ecode) { setSnack('Code is required'); return }
       const res = await fetch('/api/exercises/custom', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ trainer_id: trainerId, exercise: { ...payload, id: editingId || undefined } }) })
       const json = await res.json()
       if (!res.ok) { setSnack(json?.error || 'Failed to save'); return }
@@ -142,7 +145,7 @@ export default function ExercisesPage() {
         if (i >= 0) { const cp = prev.slice(); cp[i] = saved; return cp }
         return [saved, ...prev]
       })
-      setForm({ name: '', category: 'strength', equipment: '', primaryMuscles: [], secondaryMuscles: [], instructions: [], images: [] })
+      setForm({ name: '', category: 'strength', equipment: '', primaryMuscles: [], secondaryMuscles: [], instructions: [], ecode: "", images: [] })
       setSnack('Saved')
     } catch (e: any) { setSnack(e?.message || 'Failed') }
   }
@@ -156,6 +159,7 @@ export default function ExercisesPage() {
       primaryMuscles: e.primaryMuscles || [],
       secondaryMuscles: e.secondaryMuscles || [],
       instructions: e.instructions || [],
+      ecode: e.ecode,
       images: e.images || [],
     })
   }
@@ -266,17 +270,18 @@ export default function ExercisesPage() {
                   <TextField label="Primary muscles (comma‑separated)" size="small" value={(form.primaryMuscles || []).join(', ')} onChange={(e) => setForm({ ...form, primaryMuscles: e.target.value.split(',').map(s => s.trim()) })} />
                   <TextField label="Secondary muscles (comma‑separated)" size="small" value={(form.secondaryMuscles || []).join(', ')} onChange={(e) => setForm({ ...form, secondaryMuscles: e.target.value.split(',').map(s => s.trim()) })} />
                   <TextField label="Instructions (one per line)" size="small" value={(form.instructions || []).join('\n')} onChange={(e) => setForm({ ...form, instructions: e.target.value.split('\n') })} multiline minRows={4} />
+                  <TextField label="Code (required)" size="small" value={form.ecode || ''} onChange={(e) => setForm({ ...form, ecode: e.target.value })}/>
                   <TextField label="Image URLs (comma‑separated)" size="small" value={(form.images || []).join(', ')} onChange={(e) => setForm({ ...form, images: e.target.value.split(',').map(s => s.trim()) })} />
                   <Stack direction="row" spacing={1}>
                     <Button startIcon={<SaveIcon />} variant="contained" onClick={saveCustom}>Save</Button>
-                    {editingId && <Button variant="outlined" onClick={() => setForm({ name: '', category: 'strength', equipment: '', primaryMuscles: [], secondaryMuscles: [], instructions: [], images: [] })}>Cancel</Button>}
+                    {editingId && <Button variant="outlined" onClick={() => setForm({ name: '', category: 'strength', equipment: '', primaryMuscles: [], secondaryMuscles: [], instructions: [], ecode: "", images: [] })}>Cancel</Button>}
                   </Stack>
                 </Stack>
               </Paper>
             </Stack>
           </Stack>
         </div>
-      </main>
+      </main> 
       <footer className={styles.footer}></footer>
       <Snackbar open={!!snack} autoHideDuration={2500} onClose={() => setSnack(null)} message={snack ?? ''} />
       <Dialog open={!!openView} onClose={() => setOpenView(null)} fullWidth maxWidth="md">

@@ -78,7 +78,6 @@ export default function RoutineDetail({
             )}
             disabled={saving || !selected.id}
           />
-          <Button size="small" startIcon={<AddIcon />} onClick={onAddExercise} disabled={saving} color="primary" variant="outlined" sx={{ borderColor: "divider" }}>Add custom</Button>
         </Stack>
       </Stack>
 
@@ -93,9 +92,6 @@ export default function RoutineDetail({
                   placeholder="Exercise name"
                   size="small"
                 />
-                <IconButton onClick={() => onSaveExercise(ex)} disabled={saving} aria-label="Save exercise">
-                  <SaveIcon />
-                </IconButton>
                 <IconButton onClick={() => onDeleteExercise(ex.id)} disabled={saving} aria-label="Delete exercise">
                   <DeleteIcon />
                 </IconButton>
@@ -132,9 +128,6 @@ export default function RoutineDetail({
                       onChange={(e) => onChangeSet(ex.id, sr.id, { weight: Number(e.target.value) })}
                     />
                     {/* Removed PR and Done local-only flags for cleaner UX */}
-                    <IconButton onClick={() => onSaveSet(sr)} disabled={saving}>
-                      <SaveIcon />
-                    </IconButton>
                     <IconButton onClick={() => onDeleteSet(ex.id, sr.id)} disabled={saving} aria-label="Delete set">
                       <DeleteIcon />
                     </IconButton>
