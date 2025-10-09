@@ -11,7 +11,8 @@ type CatalogExercise = any;
 
 export default function RoutineDetail({
   selected,
-  onRename,
+  onUpdateRoutine,
+  onSaveRoutine,
   exercises,
   onChangeExercise,
   onAddExercise,
@@ -27,7 +28,8 @@ export default function RoutineDetail({
   saving,
 }: {
   selected: Routine | null;
-  onRename: (name: string) => void;
+  onUpdateRoutine: (patch: Partial<Routine>) => void | Promise<void>;
+  onSaveRoutine: (patch: Partial<Routine>) => void | Promise<void>;
   exercises: Exercise[];
   onChangeExercise: (id: string, patch: Partial<Exercise>) => void;
   onAddExercise: () => void;
@@ -48,12 +50,12 @@ export default function RoutineDetail({
       <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2 }}>
         <TextField
           value={selected.name ?? ""}
-          onChange={(e) => onRename(e.target.value)}
+          onChange={(e) => onUpdateRoutine({ name: e.target.value })}
           placeholder="Routine name"
           size="small"
           sx={{ minWidth: 280 }}
         />
-        <IconButton onClick={() => onSaveExercise({ id: "__name__" }) as any} disabled={saving} aria-label="Save routine name">
+        <IconButton onClick={() => onSaveRoutine({ name: selected.name })} disabled={saving} aria-label="Save routine name">
           <SaveIcon />
         </IconButton>
       </Stack>

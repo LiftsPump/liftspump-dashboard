@@ -137,7 +137,7 @@ export async function GET(req: NextRequest) {
         )
       customerId = created.id
     } catch (_err: any) {
-      return NextResponse.json({ error: err?.message ?? 'Unable to provision Stripe customer' }, { status: 500 })
+      return NextResponse.json({ error: _err?.message ?? 'Unable to provision Stripe customer' }, { status: 500 })
     }
   }
 
