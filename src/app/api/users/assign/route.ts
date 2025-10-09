@@ -6,6 +6,8 @@ export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}));
   const targetUserId = String(body?.target_user_id || "").trim();
   const trainerRoutineId = String(body?.trainer_routine_id || "").trim();
+  const rawRepeatDays = body?.repeat_days;
+  const rawRepeatWeekly = body?.repeat_weekly;
 
   if (!targetUserId || !trainerRoutineId) {
     return NextResponse.json({ error: "Missing target user or routine" }, { status: 400 });
@@ -59,12 +61,41 @@ export async function POST(req: NextRequest) {
     type: "assigned",
     text: trainerRoutine?.text ?? null,
     picture: trainerRoutine?.picture ?? null,
-    days: trainerRoutine?.days ?? null,
-    weekly: trainerRoutine?.weekly ?? null,
+    days: (() => {
+      if (typeof rawRepeatDays === 'number' && Number.isFinite(rawRepeatDays) && rawRepeatDays > 0) {
+        return Math.trunc(rawRepeatDays);
+      }
+      if (typeof rawRepeatDays === 'string' && rawRepeatDays.trim()) {
+        const parsed = Number(rawRepeatDays);
+        if (Number.isFinite(parsed) && parsed > 0) {
+          return Math.trunc(parsed);
+        }
+      }
+      return trainerRoutine?.days ?? null;
+    })(),
+    weekly: (() => {
+      if (typeof rawRepeatWeekly === 'number' && Number.isFinite(rawRepeatWeekly) && rawRepeatWeekly > 0) {
+        return Math.trunc(rawRepeatWeekly);
+      }
+      if (typeof rawRepeatWeekly === 'string' && rawRepeatWeekly.trim()) {
+        const parsed = Number(rawRepeatWeekly);
+        if (Number.isFinite(parsed) && parsed > 0) {
+          return Math.trunc(parsed);
+        }
+      }
+      return trainerRoutine?.weekly ?? null;
+    })(),
     date: new Date().toISOString(),
     duration: trainerRoutine?.duration ?? null,
     creator_id: targetUserId,
   };
+
+  if (insertPayload.days && insertPayload.days > 0) {
+    insertPayload.weekly = null;
+  }
+  if (insertPayload.weekly && insertPayload.weekly > 0) {
+    insertPayload.days = null;
+  }
 
   const { data: newRoutine, error: insertError } = await supabase
     .from("routines")

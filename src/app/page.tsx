@@ -180,9 +180,9 @@ export default function Home() {
               <Typography variant="h5" fontWeight={700} color="white">Overview</Typography>
               {trainerId && <Chip size="small" label={`Trainer ${trainerId.slice(0,8)}…`} />}
               <Box flex={1} />
-              <Button variant="contained" onClick={copyInvite} disabled={!trainerId}>Copy invite link</Button>
+              <Button variant="outlined" onClick={copyInvite} disabled={!trainerId}>Copy invite link</Button>
               <Button variant="outlined" onClick={() => location.assign('/payments')}>Payments</Button>
-              <Button variant="outlined" onClick={() => location.assign('/api/stripe/portal')}>Billing portal</Button>
+              <Button variant="outlined" onClick={() => location.assign('/api/stripe/portal?mode=express')}>Stripe Express</Button>
             </Stack>
 
             {loading ? (
@@ -205,57 +205,6 @@ export default function Home() {
                 <StatCard icon={<InsightsIcon fontSize="small" />} label="ACTIVE SUBS" value={<span style={{color:'#fff'}}>{activeStripeSubs}</span>} sub="Stripe subscription status" accent="#f59e0b" />
                 <StatCard icon={<PaidIcon fontSize="small" />} label="MRR" value={<span style={{color:'#fff'}}>${mrr}</span>} sub="Approx. based on tier prices" accent="#34d399" />
               </Box>
-
-              <Paper sx={{ p: 2, border: '1px solid', borderColor: '#2a2a2a', bgcolor: '#1a1a1a', color: 'white' }}>
-                <Typography variant="subtitle1" sx={{ mb: 1 }} color="white">Last 30 days</Typography>
-                <Box sx={{ width: '100%', overflowX: 'auto' }}>
-                  <svg width="100%" height={200} viewBox="0 0 720 200" preserveAspectRatio="none" style={{ display: 'block' }}>
-                    {(() => {
-                      const pad = { l: 40, r: 10, t: 10, b: 20 };
-                      const W = 720 - pad.l - pad.r;
-                      const H = 200 - pad.t - pad.b;
-                      const data = chart.length ? chart : [{ day: '', subs: 0, revenue: 0 }];
-                      const maxY = Math.max(1, ...data.map(d => Math.max(d.subs, d.revenue)));
-                      const stepX = W / Math.max(1, data.length - 1);
-                      const toX = (i: number) => pad.l + i * stepX;
-                      const toY = (v: number) => pad.t + (H - (v / maxY) * H);
-                      // axes
-                      const axis = <>
-                        <line x1={pad.l} y1={pad.t+H} x2={pad.l+W} y2={pad.t+H} stroke="#333" />
-                        <line x1={pad.l} y1={pad.t} x2={pad.l} y2={pad.t+H} stroke="#333" />
-                        <text x={pad.l-8} y={pad.t+12} fill="#e5e7eb" fontSize="10" textAnchor="end">{maxY}</text>
-                        <text x={pad.l-8} y={pad.t+H} fill="#e5e7eb" fontSize="10" textAnchor="end">0</text>
-                      </>;
-                      // lines
-                      const pathFor = (key: 'subs'|'revenue', color: string, fillId: string) => {
-                        let d = '';
-                        data.forEach((pt, i) => {
-                          const x = toX(i); const y = toY(pt[key]);
-                          d += (i === 0 ? `M ${x} ${y}` : ` L ${x} ${y}`);
-                        });
-                        const dArea = `${d} L ${pad.l + W} ${pad.t + H} L ${pad.l} ${pad.t + H} Z`;
-                        return <>
-                          <defs>
-                            <linearGradient id={fillId} x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="0%" stopColor={color} stopOpacity={0.35} />
-                              <stop offset="100%" stopColor={color} stopOpacity={0} />
-                            </linearGradient>
-                          </defs>
-                          <path d={dArea} fill={`url(#${fillId})`} stroke="none" />
-                          <path d={d} fill="none" stroke={color} strokeWidth={2} />
-                        </>
-                      }
-                      return <>
-                        {axis}
-                        {pathFor('subs', '#1AE080', 'fillSubs')}
-                        {pathFor('revenue', '#7dd3fc', 'fillRev')}
-                        <text x={pad.l+6} y={pad.t+12} fill="#1AE080" fontSize="10">subs</text>
-                        <text x={pad.l+56} y={pad.t+12} fill="#93c5fd" fontSize="10">revenue</text>
-                      </>
-                    })()}
-                  </svg>
-                </Box>
-              </Paper>
 
               {/* Recent activity */}
               <Paper sx={{ p: 2, border: '1px solid', borderColor: '#2a2a2a', bgcolor: '#1a1a1a', color: 'white' }}>

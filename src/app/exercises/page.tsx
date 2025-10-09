@@ -4,7 +4,7 @@ import Navigation from "../../components/Navigation";
 import styles from "../page.module.css";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSupabaseClient, useSession, useSessionContext } from "@supabase/auth-helpers-react";
-import { Box, Paper, Stack, Typography, TextField, Button, Chip, IconButton, Snackbar, ToggleButtonGroup, ToggleButton, Dialog, DialogTitle, DialogContent, DialogActions, MenuItem, InputAdornment } from "@mui/material";
+import { Autocomplete, Box, Paper, Stack, Typography, TextField, Button, Chip, IconButton, Snackbar, ToggleButtonGroup, ToggleButton, Dialog, DialogTitle, DialogContent, DialogActions, MenuItem, InputAdornment } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
@@ -38,6 +38,19 @@ export default function ExercisesPage() {
   const [categoryFilter, setCategoryFilter] = useState<string>('')
   const [equipFilter, setEquipFilter] = useState<string>('')
   const [page, setPage] = useState(1)
+  const normalizeList = (values: readonly string[]) => {
+    const seen = new Set<string>()
+    const result: string[] = []
+    values.forEach((v) => {
+      const value = v.trim()
+      if (!value) return
+      const key = value.toLowerCase()
+      if (seen.has(key)) return
+      seen.add(key)
+      result.push(value)
+    })
+    return result
+  }
   const pageSize = 30
 
   const [openView, setOpenView] = useState<Exercise | null>(null)
@@ -62,7 +75,7 @@ export default function ExercisesPage() {
   }, [])
 
   // Form state for new/edit custom exercise
-  const [form, setForm] = useState<Partial<Exercise>>({ name: '', category: 'strength', equipment: '', primaryMuscles: [], secondaryMuscles: [], ecode: "", instructions: [], images: [] })
+  const [form, setForm] = useState<Partial<Exercise>>({ name: '', category: '', equipment: '', primaryMuscles: [], secondaryMuscles: [], ecode: "", instructions: [], images: [] })
   const editingId = (form.id as string | undefined) || null
 
   useEffect(() => {
@@ -102,8 +115,50 @@ export default function ExercisesPage() {
   }, [isLoading, session?.user?.id, supabase])
 
   const all = useMemo(() => [...custom, ...builtin], [custom, builtin])
-  const allCategories = useMemo(() => Array.from(new Set(all.map(e => e.category).filter(Boolean) as string[])).sort(), [all])
-  const allEquip = useMemo(() => Array.from(new Set(all.map(e => (e.equipment || '').toLowerCase()).filter(Boolean))).sort(), [all])
+  const categoryOptions = useMemo(() => {
+    const seen = new Set<string>()
+    const result: string[] = []
+    for (const { category } of all) {
+      const value = (category || '').trim()
+      if (!value) continue
+      const key = value.toLowerCase()
+      if (seen.has(key)) continue
+      seen.add(key)
+      result.push(value)
+    }
+    return result.sort((a, b) => a.localeCompare(b))
+  }, [all])
+  const muscleOptions = useMemo(() => {
+    const seen = new Set<string>()
+    const result: string[] = []
+    for (const exercise of all) {
+      const groups = [exercise.primaryMuscles, exercise.secondaryMuscles]
+      for (const group of groups) {
+        for (const m of group || []) {
+          const value = (m || '').trim()
+          if (!value) continue
+          const key = value.toLowerCase()
+          if (seen.has(key)) continue
+          seen.add(key)
+          result.push(value)
+        }
+      }
+    }
+    return result.sort((a, b) => a.localeCompare(b))
+  }, [all])
+  const equipmentOptions = useMemo(() => {
+    const seen = new Set<string>()
+    const result: string[] = []
+    for (const { equipment } of all) {
+      const value = (equipment || '').trim()
+      if (!value) continue
+      const key = value.toLowerCase()
+      if (seen.has(key)) continue
+      seen.add(key)
+      result.push(value)
+    }
+    return result.sort((a, b) => a.localeCompare(b))
+  }, [all])
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
     let base = all
@@ -128,8 +183,10 @@ export default function ExercisesPage() {
       const payload = {
         ...form,
         name: String(form.name || '').trim(),
-        primaryMuscles: String((form.primaryMuscles || []).join(',')).split(',').map(s => s.trim()).filter(Boolean),
-        secondaryMuscles: String((form.secondaryMuscles || []).join(',')).split(',').map(s => s.trim()).filter(Boolean),
+        category: String(form.category || '').trim() || null,
+        equipment: String(form.equipment || '').trim() || null,
+        primaryMuscles: normalizeList(form.primaryMuscles || []),
+        secondaryMuscles: normalizeList(form.secondaryMuscles || []),
         instructions: String((form.instructions || []).join('\n')).split('\n').map(s => s.trim()).filter(Boolean),
         ecode: String(form.ecode || '').trim(),
         images: String((form.images || []).join(',')).split(',').map(s => s.trim()).filter(Boolean),
@@ -145,7 +202,7 @@ export default function ExercisesPage() {
         if (i >= 0) { const cp = prev.slice(); cp[i] = saved; return cp }
         return [saved, ...prev]
       })
-      setForm({ name: '', category: 'strength', equipment: '', primaryMuscles: [], secondaryMuscles: [], instructions: [], ecode: "", images: [] })
+      setForm({ name: '', category: '', equipment: '', primaryMuscles: [], secondaryMuscles: [], instructions: [], ecode: "", images: [] })
       setSnack('Saved')
     } catch (e: any) { setSnack(e?.message || 'Failed') }
   }
@@ -217,11 +274,14 @@ export default function ExercisesPage() {
                     </ToggleButtonGroup>
                     <TextField select label="Category" size="small" value={categoryFilter} onChange={(e) => { setCategoryFilter(e.target.value); setPage(1) }} sx={{ minWidth: 160 }}>
                       <MenuItem value="">All</MenuItem>
-                      {allCategories.map(c => <MenuItem key={c} value={c}>{c}</MenuItem>)}
+                      {categoryOptions.map(c => <MenuItem key={c} value={c}>{c}</MenuItem>)}
                     </TextField>
                     <TextField select label="Equipment" size="small" value={equipFilter} onChange={(e) => { setEquipFilter(e.target.value); setPage(1) }} sx={{ minWidth: 160 }}>
                       <MenuItem value="">All</MenuItem>
-                      {allEquip.map(c => <MenuItem key={c} value={c}>{c}</MenuItem>)}
+                      {equipmentOptions.map(c => {
+                        const key = c.toLowerCase()
+                        return <MenuItem key={key} value={key}>{c}</MenuItem>
+                      })}
                     </TextField>
                   </Stack>
                   <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: 'repeat(3, 1fr)' }, gap: 1 }}>
@@ -265,16 +325,62 @@ export default function ExercisesPage() {
                 <Stack spacing={1}>
                   <Typography variant="subtitle1" fontWeight={700}>{editingId ? 'Edit custom exercise' : 'Create custom exercise'}</Typography>
                   <TextField label="Name" size="small" value={form.name || ''} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-                  <TextField label="Category" size="small" value={form.category || ''} onChange={(e) => setForm({ ...form, category: e.target.value })} />
-                  <TextField label="Equipment" size="small" value={form.equipment || ''} onChange={(e) => setForm({ ...form, equipment: e.target.value })} />
-                  <TextField label="Primary muscles (comma‑separated)" size="small" value={(form.primaryMuscles || []).join(', ')} onChange={(e) => setForm({ ...form, primaryMuscles: e.target.value.split(',').map(s => s.trim()) })} />
-                  <TextField label="Secondary muscles (comma‑separated)" size="small" value={(form.secondaryMuscles || []).join(', ')} onChange={(e) => setForm({ ...form, secondaryMuscles: e.target.value.split(',').map(s => s.trim()) })} />
+                  <Autocomplete
+                    freeSolo
+                    options={categoryOptions}
+                    value={form.category || null}
+                    inputValue={form.category ?? ''}
+                    onInputChange={(_, value) => {
+                      setForm((prev) => (prev.category === value ? prev : { ...prev, category: value }))
+                    }}
+                    onChange={(_, value) => {
+                      const next = typeof value === 'string' ? value : ''
+                      setForm((prev) => (prev.category === next ? prev : { ...prev, category: next }))
+                    }}
+                    renderInput={(params) => <TextField {...params} label="Category" size="small" />}
+                  />
+                  <Autocomplete
+                    freeSolo
+                    options={equipmentOptions}
+                    value={form.equipment || null}
+                    inputValue={form.equipment ?? ''}
+                    onInputChange={(_, value) => {
+                      setForm((prev) => (prev.equipment === value ? prev : { ...prev, equipment: value }))
+                    }}
+                    onChange={(_, value) => {
+                      const next = typeof value === 'string' ? value : ''
+                      setForm((prev) => (prev.equipment === next ? prev : { ...prev, equipment: next }))
+                    }}
+                    renderInput={(params) => <TextField {...params} label="Equipment" size="small" />}
+                  />
+                  <Autocomplete
+                    multiple
+                    freeSolo
+                    options={muscleOptions}
+                    value={form.primaryMuscles || []}
+                    filterSelectedOptions
+                    onChange={(_, value) => {
+                      setForm((prev) => ({ ...prev, primaryMuscles: normalizeList(value) }))
+                    }}
+                    renderInput={(params) => <TextField {...params} label="Primary muscles" size="small" />}
+                  />
+                  <Autocomplete
+                    multiple
+                    freeSolo
+                    options={muscleOptions}
+                    value={form.secondaryMuscles || []}
+                    filterSelectedOptions
+                    onChange={(_, value) => {
+                      setForm((prev) => ({ ...prev, secondaryMuscles: normalizeList(value) }))
+                    }}
+                    renderInput={(params) => <TextField {...params} label="Secondary muscles" size="small" />}
+                  />
                   <TextField label="Instructions (one per line)" size="small" value={(form.instructions || []).join('\n')} onChange={(e) => setForm({ ...form, instructions: e.target.value.split('\n') })} multiline minRows={4} />
                   <TextField label="Code (required)" size="small" value={form.ecode || ''} onChange={(e) => setForm({ ...form, ecode: e.target.value })}/>
                   <TextField label="Image URLs (comma‑separated)" size="small" value={(form.images || []).join(', ')} onChange={(e) => setForm({ ...form, images: e.target.value.split(',').map(s => s.trim()) })} />
                   <Stack direction="row" spacing={1}>
                     <Button startIcon={<SaveIcon />} variant="contained" onClick={saveCustom}>Save</Button>
-                    {editingId && <Button variant="outlined" onClick={() => setForm({ name: '', category: 'strength', equipment: '', primaryMuscles: [], secondaryMuscles: [], instructions: [], ecode: "", images: [] })}>Cancel</Button>}
+                    {editingId && <Button variant="outlined" onClick={() => setForm({ name: '', category: '', equipment: '', primaryMuscles: [], secondaryMuscles: [], instructions: [], ecode: "", images: [] })}>Cancel</Button>}
                   </Stack>
                 </Stack>
               </Paper>

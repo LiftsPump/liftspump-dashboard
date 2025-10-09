@@ -24,11 +24,10 @@ interface NavigationItem {
 
 const navigationItems: NavigationItem[] = [
   { id: 'routines', label: 'Routines', icon: <FitnessCenterIcon fontSize="small" />, path: '/routines' },
+  { id: 'users', label: 'Users', icon: <GroupIcon fontSize="small" />, path: '/users' },
   { id: 'videos', label: 'Videos', icon: <VideoLibraryIcon fontSize="small" />, path: '/videos' },
   { id: 'exercises', label: 'Exercises', icon: <LibraryBooksIcon fontSize="small" />, path: '/exercises' },
-  { id: 'users', label: 'Users', icon: <GroupIcon fontSize="small" />, path: '/users' },
   { id: 'payments', label: 'Payments', icon: <CreditCardIcon fontSize="small" />, path: '/payments' },
-  { id: 'sessions', label: 'Sessions', icon: <EventIcon fontSize="small" />, path: '/sessions' },
 ];
 
 export default function Navigation() {

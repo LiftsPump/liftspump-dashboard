@@ -260,8 +260,8 @@ export default function PaymentsSettings() {
   };
 
   const handleStripePortal = async () => {
-    // Replace with your real Billing Portal link
-    window.open("/api/stripe/portal", "_blank", "noopener,noreferrer");
+    // Open the trainer's Stripe Express dashboard or onboarding flow
+    window.open("/api/stripe/portal?mode=express", "_blank", "noopener,noreferrer");
   };
 
   const onPickPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -293,7 +293,7 @@ export default function PaymentsSettings() {
             <Typography variant="h5" fontWeight={700}>Settings</Typography>
             <Chip label={`${totalActive} active tier${totalActive === 1 ? "" : "s"}`} size="small" />
             <Box flex={1} />
-            <Button onClick={handleStripePortal} startIcon={<PaymentsIcon />} variant="outlined" size="small">Billing Portal</Button>
+            <Button onClick={handleStripePortal} startIcon={<PaymentsIcon />} variant="outlined" size="small">Stripe Express</Button>
             <Button onClick={handleSave} startIcon={<SaveIcon />} disabled={saving} variant="outlined" size="small">
               {saving ? "Saving…" : "Save"}
             </Button>
@@ -305,12 +305,6 @@ export default function PaymentsSettings() {
               <Typography variant="h6" fontWeight={700} sx={{ mb: 1 }}>Trainer profile</Typography>
               <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
                 <Avatar src={trainerPhoto ?? undefined} sx={{ width: 72, height: 72 }} />
-                <label>
-                  <input type="file" accept="image/*" hidden onChange={onPickPhoto} />
-                  <Button component="span" startIcon={<PhotoCameraIcon />} disabled={uploading} variant="outlined" size="small">
-                    {uploading ? "Uploading…" : "Upload photo"}
-                  </Button>
-                </label>
               </Stack>
               <Stack spacing={1} sx={{ mb: 2 }}>
                 <TextField
@@ -339,9 +333,6 @@ export default function PaymentsSettings() {
                   <Button onClick={createTrainerIfMissing} variant="outlined" size="small">Create trainer</Button>
                 )}
               </Stack>
-              <Typography variant="body2" sx={{ opacity: 0.8 }}>
-                Your photo appears on checkout and user invites.
-              </Typography>
             </Paper>
 
             {/* Right: Tiers & Pricing */}
@@ -394,10 +385,10 @@ export default function PaymentsSettings() {
               <Paper sx={{ p: 2, border: "1px solid", borderColor: "divider", bgcolor: "background.paper" }}>
                 <Typography variant="h6" fontWeight={700} sx={{ mb: 1 }}>Checkout & invites</Typography>
                 <Typography variant="body2" sx={{ mb: 1 }}>
-                  Users will be sent to Stripe Checkout, then redirected back with your <code>trainer_id</code> in the URL.
+                  To view your payments dashboard please click on Stripe Express.  On this page you can see your balance and withdraw money.  If you have any issues please email me at <a href="mailto:ahmed@liftspump.com">ahmed@liftspump.com</a>.
                 </Typography>
                 <Stack direction="row" spacing={1}>
-                  <Button variant="outlined" onClick={handleStripePortal} startIcon={<PaymentsIcon />}>Open Billing Portal</Button>
+                  <Button variant="outlined" onClick={handleStripePortal} startIcon={<PaymentsIcon />}>Open Stripe Express</Button>
                 </Stack>
               </Paper>
             </Box>

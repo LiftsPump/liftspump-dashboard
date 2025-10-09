@@ -376,13 +376,14 @@ export default function Routines() {
               <Paper elevation={1} sx={{ flex: 1, display: "flex", flexDirection: "column", borderRadius: 2, overflow: "hidden", bgcolor: "background.paper", color: "text.primary" }}>
                 <Box sx={{ flex: 1, overflowY: "auto", p: 2 }}>
                   {selected && (
-                    <Box sx={{ position: "absolute", right: '2%', mt: 1, display: 'flex', justifyContent: 'flex-end' }}>
+                    <Box sx={{ position: "absolute", right: '13%', mt: 1, display: 'flex', justifyContent: 'flex-end' }}>
                       <Button size="small" color="error" startIcon={<DeleteIcon />} onClick={deleteRoutine} disabled={saving}>Delete routine</Button>
                     </Box>
                   )}
                   <RoutineDetail
                     selected={selected as any}
-                    onRename={(name: string) => { if (selected) { setRoutines((prev) => prev.map(r => r.id === selected.id ? { ...r, name } : r)); } }}
+                    onUpdateRoutine={(patch: Partial<any>) => { if (selected) { setRoutines((prev) => prev.map(r => r.id === selected.id ? { ...r, ...patch } : r)); } }}
+                    onSaveRoutine={async (patch: Partial<any>) => { if (!selected) return; setSaving(true); await supabase.from('routines').update(patch).eq('id', selected.id); setSaving(false); }}
                     exercises={exercises as any}
                     onChangeExercise={(id, patch) => setExercises((prev) => prev.map(p => p.id === id ? { ...p, ...patch } : p))}
                     onAddExercise={addExercise}

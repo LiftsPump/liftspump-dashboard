@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { promises as fs } from 'fs'
 import path from 'path'
 import { getStripe, getOrigin } from '@/utils/stripe'
-import { cookies } from 'next/headers'
 import { createClient as createSupabaseServer } from '@/utils/supabase/server'
 
 type Tier = { key: string; name: string; price: number; active: boolean; stripe_price_id?: string }
@@ -22,9 +21,15 @@ export async function GET(req: NextRequest) {
 
   // Resolve a tier to use: try Supabase first, then fallback to local JSON
   let tiers: Tier[] = []
+  let supabase: ReturnType<typeof createSupabaseServer> | null = null
+  let connectAccountId = connectFromQuery ?? null
+
   try {
-    const supabase = createSupabaseServer()
-    if (trainerId) {
+    supabase = createSupabaseServer()
+  } catch {}
+
+  if (supabase && trainerId) {
+    try {
       const { data, error } = await supabase
         .from('tiers')
         .select('key,name,price,active,stripe_price_id')
@@ -40,8 +45,20 @@ export async function GET(req: NextRequest) {
           stripe_price_id: t.stripe_price_id ?? undefined,
         }))
       }
+    } catch {}
+
+    if (!connectAccountId) {
+      try {
+        const { data: trainerRows } = await supabase
+          .from('trainer')
+          .select('connect_account_id')
+          .eq('trainer_id', trainerId)
+          .limit(1)
+        const stored = trainerRows?.[0]?.connect_account_id as string | undefined
+        if (stored) connectAccountId = stored
+      } catch {}
     }
-  } catch {}
+  }
   try {
     if (!tiers.length) {
       const raw = await fs.readFile(DATA_FILE, 'utf8')
@@ -135,19 +152,31 @@ export async function GET(req: NextRequest) {
       }]
     }
 
-    // Stripe Connect disabled per requirements — do not attach transfer_data
-
     let existingCustomerId: string | null = null
+
+    const meta = {
+      trainer_id: trainerId ?? '',
+      tier_key: chosen.key,
+      user_id: userId ?? '',
+      connect_account_id: connectAccountId ?? '',
+    }
 
     const baseParams: any = {
       mode: 'subscription',
       allow_promotion_codes: true,
-      metadata: { trainer_id: trainerId ?? '', tier_key: chosen.key, user_id: userId ?? '' },
+      metadata: meta,
+      subscription_data: { metadata: meta },
       success_url: success + (success.includes('?') ? '&' : '?') + 'status=success',
       cancel_url: cancel + (cancel.includes('?') ? '&' : '?') + 'status=cancel',
       line_items: lineItems,
     }
-    // No subscription_data.transfer_data added
+
+    if (connectAccountId) {
+      baseParams.subscription_data = {
+        ...baseParams.subscription_data,
+        transfer_data: { destination: connectAccountId },
+      }
+    }
 
     // If already subscribed, redirect to portal instead of creating a new subscription
     if (userId && trainerId) {

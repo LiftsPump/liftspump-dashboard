@@ -223,7 +223,7 @@ function JoinInner() {
                   <Button
                     variant="contained"
                     color="primary"
-                    onClick={() => router.push(`/api/stripe/portal`)}
+                    onClick={() => router.push(`/api/stripe/portal?mode=customer`)}
                     sx={{
                       px: 3,
                       py: 1.25,

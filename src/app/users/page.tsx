@@ -84,6 +84,7 @@ export default function Users() {
   const [routinePick, setRoutinePick] = useState<Routine | null>(null);
   const [trainerId, setTrainerId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [repeatChoice, setRepeatChoice] = useState<string>('none');
 
   // Supabase Auth Helpers
   const session = useSession();
@@ -214,12 +215,31 @@ export default function Users() {
     if (!routinePick || !selectedUser) return;
     setAssigning(true);
     try {
+      const repeatPayload = (() => {
+        switch (repeatChoice) {
+          case 'daily':
+            return { repeat_days: 1, repeat_weekly: null };
+          case 'every-other':
+            return { repeat_days: 2, repeat_weekly: null };
+          case 'every-3':
+            return { repeat_days: 3, repeat_weekly: null };
+          case 'every-4':
+            return { repeat_days: 4, repeat_weekly: null };
+          case 'weekly':
+            return { repeat_days: null, repeat_weekly: 1 };
+          case 'biweekly':
+            return { repeat_days: null, repeat_weekly: 2 };
+          default:
+            return { repeat_days: null, repeat_weekly: null };
+        }
+      })();
       const response = await fetch("/api/users/assign", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           target_user_id: selectedUser,
           trainer_routine_id: routinePick.id,
+          ...repeatPayload,
         }),
       });
       const payload = await response.json().catch(() => ({}));
@@ -272,6 +292,46 @@ export default function Users() {
     }
   };
 
+  useEffect(() => {
+    if (!routinePick) {
+      setRepeatChoice('none');
+      return;
+    }
+    if (typeof routinePick.days === 'number' && routinePick.days > 0) {
+      switch (routinePick.days) {
+        case 1:
+          setRepeatChoice('daily');
+          return;
+        case 2:
+          setRepeatChoice('every-other');
+          return;
+        case 3:
+          setRepeatChoice('every-3');
+          return;
+        case 4:
+          setRepeatChoice('every-4');
+          return;
+        default:
+          setRepeatChoice('none');
+          return;
+      }
+    }
+    if (typeof routinePick.weekly === 'number' && routinePick.weekly > 0) {
+      switch (routinePick.weekly) {
+        case 1:
+          setRepeatChoice('weekly');
+          return;
+        case 2:
+          setRepeatChoice('biweekly');
+          return;
+        default:
+          setRepeatChoice('none');
+          return;
+      }
+    }
+    setRepeatChoice('none');
+  }, [routinePick]);
+
   const selectedProfile = useMemo(() => profiles.find(p => p.creator_id === selectedUser) || null, [profiles, selectedUser]);
   const assignedRoutines = useMemo(
     () => userRoutines.filter(r => (r.type ?? "").toLowerCase() === "assigned"),
@@ -313,9 +373,12 @@ export default function Users() {
                 selectedProfile={selectedProfile as any}
                 summary={summary}
                 trainerRoutines={trainerRoutines as any}
+                repeatChoice={repeatChoice}
+                onChangeRepeatChoice={setRepeatChoice}
                 onPickRoutine={(val) => setRoutinePick(val as any)}
                 onAssignRoutine={assignRoutineToUser}
                 assigning={assigning}
+                canAssign={Boolean(routinePick)}
                 assignedRoutines={assignedRoutines as any}
                 userRoutines={userRoutines as any}
                 onDeleteAssignedRoutine={deleteAssignedRoutine}

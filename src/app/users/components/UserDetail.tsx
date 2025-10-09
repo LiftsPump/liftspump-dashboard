@@ -1,5 +1,5 @@
 "use client";
-import { Paper, Box, Stack, Typography, Chip, Divider, TextField, Autocomplete, Button } from "@mui/material";
+import { Paper, Box, Stack, Typography, Chip, Divider, TextField, Autocomplete, Button, MenuItem } from "@mui/material";
 import FitnessCenterIcon from "@mui/icons-material/FitnessCenter";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import DeleteIcon from "@mui/icons-material/Delete"
@@ -8,9 +8,12 @@ export default function UserDetail({
   selectedProfile,
   summary,
   trainerRoutines,
+  repeatChoice,
+  onChangeRepeatChoice,
   onPickRoutine,
   onAssignRoutine,
   assigning,
+  canAssign,
   assignedRoutines,
   userRoutines,
   onKick,
@@ -19,9 +22,12 @@ export default function UserDetail({
   selectedProfile: any;
   summary: string;
   trainerRoutines: any[];
+  repeatChoice: string;
+  onChangeRepeatChoice: (value: string) => void;
   onPickRoutine: (r: any | null) => void;
   onAssignRoutine: () => void;
   assigning: boolean;
+  canAssign: boolean;
   assignedRoutines: any[];
   userRoutines: any[];
   onKick?: () => void;
@@ -97,6 +103,37 @@ export default function UserDetail({
   const consLbl = consistencyLabel(spw);
   const avgMins = avgDuration(userRoutines, 10);
   const strengthLbl = strengthLabel(avgMins);
+  const repeatOptions = [
+    { value: 'none', label: 'No repeat' },
+    { value: 'daily', label: 'Every day' },
+    { value: 'every-other', label: 'Every other day' },
+    { value: 'every-3', label: 'Every 3 days' },
+    { value: 'every-4', label: 'Every 4 days' },
+    { value: 'weekly', label: 'Once a week' },
+    { value: 'biweekly', label: 'Every 2 weeks' },
+  ];
+  const repeatSummary = (routine: any): string | null => {
+    if (routine?.days && routine.days > 0) {
+      switch (routine.days) {
+        case 1:
+          return 'Repeats daily';
+        case 2:
+          return 'Repeats every other day';
+        case 3:
+          return 'Repeats every 3 days';
+        case 4:
+          return 'Repeats every 4 days';
+        default:
+          return `Repeats every ${routine.days} days`;
+      }
+    }
+    if (routine?.weekly && routine.weekly > 0) {
+      if (routine.weekly === 1) return 'Repeats weekly';
+      if (routine.weekly === 2) return 'Repeats every 2 weeks';
+      return `Repeats every ${routine.weekly} weeks`;
+    }
+    return null;
+  };
   return (
     <Paper elevation={1} sx={{ flex: 1, display: "flex", flexDirection: "column", borderRadius: 2, overflow: "hidden", bgcolor: "background.paper", color: "text.primary" }}>
       <Box sx={{ flex: 1, overflowY: "auto", p: 2 }}>
@@ -138,7 +175,22 @@ export default function UserDetail({
             )}
             disabled={assigning || !trainerRoutines.length}
           />
-          <Button onClick={onAssignRoutine} disabled={assigning} variant="contained">Assign</Button>
+          <TextField
+            select
+            size="small"
+            label="Repeat"
+            value={repeatChoice}
+            onChange={(event) => onChangeRepeatChoice(event.target.value)}
+            sx={{ minWidth: 180 }}
+            disabled={assigning}
+          >
+            {repeatOptions.map((option) => (
+              <MenuItem key={option.value} value={option.value}>
+                {option.label}
+              </MenuItem>
+            ))}
+          </TextField>
+          <Button onClick={onAssignRoutine} disabled={assigning || !canAssign} variant="contained">Assign</Button>
         </Stack>
 
         <Divider sx={{ my: 1.5 }} />
@@ -152,7 +204,10 @@ export default function UserDetail({
               <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between">
                 <Box>
                   <Typography variant="body1">{r.name || "Untitled"}</Typography>
-                  <Typography variant="body1">Assigned · {r.date ? new Date(r.date).toLocaleString() : "n/a"}{r.weekly ? ` · ${r.weekly}/wk` : ""}{r.days ? ` · ${r.days} day plan` : ""}</Typography>
+                  <Typography variant="body1">
+                    Assigned · {r.date ? new Date(r.date).toLocaleString() : "n/a"}
+                    {repeatSummary(r) ? ` · ${repeatSummary(r)}` : ''}
+                  </Typography>
                 </Box>
                 {onDeleteAssignedRoutine && (
                   <Button onClick={() => onDeleteAssignedRoutine(r.id)}>
