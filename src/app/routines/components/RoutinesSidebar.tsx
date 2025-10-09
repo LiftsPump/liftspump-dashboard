@@ -45,7 +45,7 @@ export default function RoutinesSidebar({
               ),
             }}
           />
-          <Button size="small" startIcon={<AddIcon />} onClick={addTrainerRoutine} disabled={saving} variant="contained">New</Button>
+          <Button size="small" startIcon={<AddIcon />} onClick={addTrainerRoutine} disabled={saving} variant="outlined">New</Button>
         </Stack>
       </Box>
       <Box sx={{ overflowY: "auto", maxHeight: "80vh" }}>
@@ -61,11 +61,11 @@ export default function RoutinesSidebar({
             {filtered.map((r) => (
               <ListItemButton key={r.id} selected={selectedId === r.id} onClick={() => onSelect(r.id)} sx={{ alignItems: "flex-start", py: 1.25 }}>
                 <ListItemIcon sx={{ minWidth: 44 }}>
-                  <Avatar sx={{ width: 28, height: 28 }}>{(r.name ?? "?").slice(0, 2).toUpperCase()}</Avatar>
+                  <Avatar sx={{ width: 28, height: 28, fontSize: 14 }}>{(r.name ?? "?").slice(0, 2).toUpperCase()}</Avatar>
                 </ListItemIcon>
                 <ListItemText
                   primary={<Typography variant="subtitle1" noWrap>{r.name || "Untitled"}</Typography>}
-                  secondary={<Typography variant="body2" color="text.secondary">{r.type} · {r.date ? new Date(r.date).toLocaleString() : "n/a"}</Typography>}
+                  secondary={<Typography variant="body2" color="text.secondary">{r.type} · {r.date ? new Date(r.date).toLocaleDateString() : "n/a"}</Typography>}
                 />
               </ListItemButton>
             ))}

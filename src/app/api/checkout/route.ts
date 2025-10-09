@@ -137,6 +137,8 @@ export async function GET(req: NextRequest) {
 
     // Stripe Connect disabled per requirements — do not attach transfer_data
 
+    let existingCustomerId: string | null = null
+
     const baseParams: any = {
       mode: 'subscription',
       allow_promotion_codes: true,
@@ -152,7 +154,6 @@ export async function GET(req: NextRequest) {
       try {
         const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL as string
         const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY as string | undefined
-        let customerId: string | null = null
         if (supabaseUrl && serviceKey) {
           const admin = require('@supabase/supabase-js').createClient(supabaseUrl, serviceKey)
           const { data: cust } = await admin
@@ -161,21 +162,39 @@ export async function GET(req: NextRequest) {
             .eq('user_id', userId)
             .eq('trainer', trainerId)
             .limit(1)
-          customerId = (cust?.[0]?.customer_id as string) || null
-          if (customerId) {
+          existingCustomerId = (cust?.[0]?.customer_id as string) || null
+          if (existingCustomerId) {
+            baseParams.customer = existingCustomerId
             const { data: subs } = await admin
               .from('stripe_subscriptions')
               .select('status')
-              .eq('customer_id', customerId)
+              .eq('customer_id', existingCustomerId)
               .eq('trainer', trainerId)
               .in('status', ['active','trialing','past_due','unpaid','incomplete'])
               .limit(1)
             if (Array.isArray(subs) && subs.length) {
               // Has an active-ish subscription: redirect to billing portal
-              const portal = await stripe.billingPortal.sessions.create({ customer: customerId, return_url: success })
+              const portal = await stripe.billingPortal.sessions.create({ customer: existingCustomerId, return_url: success })
               return NextResponse.redirect(portal.url, { status: 302 })
             }
           }
+        }
+      } catch {}
+    }
+
+    if (!baseParams.customer && userId && !trainerId) {
+      try {
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL as string
+        const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY as string | undefined
+        if (supabaseUrl && serviceKey) {
+          const admin = require('@supabase/supabase-js').createClient(supabaseUrl, serviceKey)
+          const { data: cust } = await admin
+            .from('stripe_customers')
+            .select('customer_id')
+            .eq('user_id', userId)
+            .limit(1)
+          const fallbackCustomer = (cust?.[0]?.customer_id as string) || null
+          if (fallbackCustomer) baseParams.customer = fallbackCustomer
         }
       } catch {}
     }

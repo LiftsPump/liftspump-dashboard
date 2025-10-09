@@ -2,6 +2,7 @@
 import { Paper, Box, Stack, Typography, Chip, Divider, TextField, Autocomplete, Button } from "@mui/material";
 import FitnessCenterIcon from "@mui/icons-material/FitnessCenter";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
+import DeleteIcon from "@mui/icons-material/Delete"
 
 export default function UserDetail({
   selectedProfile,
@@ -13,6 +14,7 @@ export default function UserDetail({
   assignedRoutines,
   userRoutines,
   onKick,
+  onDeleteAssignedRoutine,
 }: {
   selectedProfile: any;
   summary: string;
@@ -23,6 +25,7 @@ export default function UserDetail({
   assignedRoutines: any[];
   userRoutines: any[];
   onKick?: () => void;
+  onDeleteAssignedRoutine: (id: string) => void;
 }) {
   if (!selectedProfile) return null;
   // ---- quick metrics for chips ----
@@ -151,6 +154,11 @@ export default function UserDetail({
                   <Typography variant="body1">{r.name || "Untitled"}</Typography>
                   <Typography variant="body1">Assigned · {r.date ? new Date(r.date).toLocaleString() : "n/a"}{r.weekly ? ` · ${r.weekly}/wk` : ""}{r.days ? ` · ${r.days} day plan` : ""}</Typography>
                 </Box>
+                {onDeleteAssignedRoutine && (
+                  <Button onClick={() => onDeleteAssignedRoutine(r.id)}>
+                    <DeleteIcon color="error"/>
+                  </Button>
+                )}
                 {r.duration != null ? (
                   <Chip size="small" label={`${r.duration}m`} />
                 ) : null}

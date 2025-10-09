@@ -45,7 +45,6 @@ function JoinInner() {
         try {
           const pres = await fetch(`/api/public/trainer-info?trainer_id=${encodeURIComponent(trainerId)}`, { cache: 'no-store' })
           const pjson = await pres.json()
-          setTrainerPhoto(pjson?.photo_url ?? null)
           setTrainerName(pjson?.display_name ?? null)
           setTrainerBio(pjson?.bio ?? null)
           setTrainerStats({ subs_count: Number(pjson?.subs_count) || 0, tiers_count: Number(pjson?.tiers_count) || 0 })
@@ -116,24 +115,6 @@ function JoinInner() {
                 <Stack>
                   <Typography variant="h4" fontWeight={800} color="white">{trainerName ? `Join ${trainerName}` : 'Join'}</Typography>
                   {trainerBio && <Typography variant="body2" sx={{ opacity: 0.85 }}>{trainerBio}</Typography>}
-                  {trainerId ? (
-                    <Stack direction="row" spacing={1} alignItems="center">
-                      <Chip size="small" label={`Trainer • ${trainerId.slice(0,8)}…`} sx={{ bgcolor: '#111', border: '1px solid #2a2a2a', color: '#e5e7eb' }} />
-                      {trainerStats && (
-                        <Stack direction="row" spacing={1}>
-                          <Chip size="small" label={`${trainerStats.subs_count} subscribers`} sx={{ bgcolor: '#101010', color: '#9ef6c5', border: '1px solid #1AE080' }} />
-                          <Chip size="small" label={`${trainerStats.tiers_count} tiers`} sx={{ bgcolor: '#101010', color: '#9ef6c5', border: '1px solid #1AE080' }} />
-                        </Stack>
-                      )}
-                      <Tooltip title="Copy trainer id">
-                        <IconButton size="small" onClick={() => navigator.clipboard?.writeText(trainerId)}>
-                          <ContentCopyIcon fontSize="inherit" />
-                        </IconButton>
-                      </Tooltip>
-                    </Stack>
-                  ) : (
-                    <Typography variant="body2">Missing trainer_id</Typography>
-                  )}
                 </Stack>
               </Stack>
               {ok && (

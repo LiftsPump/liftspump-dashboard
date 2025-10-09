@@ -7,11 +7,23 @@ import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import EditCalendarIcon from "@mui/icons-material/EditCalendar";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSupabaseClient, useSession, useSessionContext } from "@supabase/auth-helpers-react";
 
 type Eligible = { user_id: string; email?: string; name?: string };
 type SessionItem = { id: string; trainer: string; user_id: string; user_email?: string | null; start_iso: string; end_iso: string; meet_url: string; title?: string };
+
+type SlotEvent = {
+  type: "start" | "enter" | "end";
+  dayIndex: number;
+  date: Date;
+  hour: number;
+  minute: number;
+};
+
+const pad = (value: number) => String(value).padStart(2, "0");
+const formatDateKey = (date: Date) => `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+const makeSlotKey = (dateKey: string, hour: number, minute: number) => `${dateKey}T${pad(hour)}:${pad(minute)}`;
 
 export default function SessionsPage() {
   const supabase = useSupabaseClient();
@@ -28,6 +40,10 @@ export default function SessionsPage() {
   const [time, setTime] = useState<string>("");
   const [title, setTitle] = useState<string>("");
 
+  const [availabilityMode, setAvailabilityMode] = useState(false);
+  const [availabilityDrag, setAvailabilityDrag] = useState<{ day: number; start: number } | null>(null);
+  const [availabilityPreview, setAvailabilityPreview] = useState<{ day: number; start: number; end: number } | null>(null);
+
   // Settings state
   type Settings = { slotMinutes: number; bufferMinutes: number; workStart: number; workEnd: number; days: number[] }
   const [settings, setSettings] = useState<Settings>({ slotMinutes: 15, bufferMinutes: 0, workStart: 8, workEnd: 17, days: [0,1,2,3,4] })
@@ -36,6 +52,13 @@ export default function SessionsPage() {
     await fetch('/api/sessions/settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ trainer_id: trainerId, settings }) })
     setSnack('Settings saved')
   }
+
+  useEffect(() => {
+    if (!availabilityMode) {
+      setAvailabilityDrag(null)
+      setAvailabilityPreview(null)
+    }
+  }, [availabilityMode])
 
   useEffect(() => {
     let alive = true;
@@ -129,6 +152,8 @@ export default function SessionsPage() {
     try { if ('Notification' in window && Notification.permission !== 'granted') await Notification.requestPermission() } catch {}
   }
 
+  const slotMinutes = Math.max(5, settings.slotMinutes || 15)
+
   // Weekly grid helper
   const [weekStart, setWeekStart] = useState<Date>(() => {
     const d = new Date()
@@ -138,16 +163,108 @@ export default function SessionsPage() {
     d.setHours(0,0,0,0)
     return d
   })
-  const hours = Array.from({ length: Math.max(1, settings.workEnd - settings.workStart) }, (_, i) => settings.workStart + i)
-  const minutes = Array.from({ length: Math.ceil(60 / Math.max(5, settings.slotMinutes)) }, (_, i) => i * Math.max(5, settings.slotMinutes))
-  const days = Array.from({ length: 7 }, (_, i) => new Date(weekStart.getTime() + i*24*60*60*1000))
 
-  const setFromSlot = (dayDate: Date, h: number, m: number) => {
+  const days = useMemo(() => Array.from({ length: 7 }, (_, i) => new Date(weekStart.getTime() + i*24*60*60*1000)), [weekStart])
+
+  const minutes = useMemo(() => {
+    const perHour = Math.max(1, Math.floor(60 / slotMinutes))
+    return Array.from({ length: perHour }, (_, i) => i * slotMinutes)
+  }, [slotMinutes])
+
+  const sessionBySlot = useMemo(() => {
+    const map = new Map<string, SessionItem[]>()
+    const stepMs = slotMinutes * 60 * 1000
+    const guardLimit = Math.max(288, Math.ceil((24 * 60) / slotMinutes) + 2)
+    items.forEach((item) => {
+      const start = new Date(item.start_iso)
+      const end = new Date(item.end_iso)
+      let guard = 0
+      let cursor = new Date(start)
+      while (cursor < end && guard < guardLimit) {
+        const key = makeSlotKey(formatDateKey(cursor), cursor.getHours(), cursor.getMinutes())
+        if (!map.has(key)) map.set(key, [])
+        map.get(key)!.push(item)
+        cursor = new Date(cursor.getTime() + stepMs)
+        guard += 1
+      }
+      if (guard === 0) {
+        const key = makeSlotKey(formatDateKey(start), start.getHours(), start.getMinutes())
+        if (!map.has(key)) map.set(key, [])
+        map.get(key)!.push(item)
+      }
+    })
+    return map
+  }, [items, slotMinutes])
+
+  const sessionHourBounds = useMemo(() => {
+    if (!items.length) return null
+    let minHour = 23
+    let maxHour = 0
+    items.forEach((item) => {
+      const start = new Date(item.start_iso)
+      const end = new Date(item.end_iso)
+      minHour = Math.min(minHour, start.getHours())
+      const endHour = end.getMinutes() ? end.getHours() + 1 : end.getHours()
+      maxHour = Math.max(maxHour, endHour)
+    })
+    return { minHour, maxHour }
+  }, [items])
+
+  const hours = useMemo(() => {
+    const minCandidate = Math.min(settings.workStart, sessionHourBounds?.minHour ?? settings.workStart, 6)
+    const startHour = Math.max(0, minCandidate)
+    const maxCandidate = Math.max(settings.workEnd, sessionHourBounds?.maxHour ?? settings.workEnd, startHour + 12)
+    const endHour = Math.min(24, Math.max(startHour + 1, maxCandidate))
+    return Array.from({ length: Math.max(1, endHour - startHour) }, (_, i) => startHour + i)
+  }, [sessionHourBounds, settings.workEnd, settings.workStart])
+
+  const selectedSlotKey = useMemo(() => (date && time ? `${date}T${time}` : null), [date, time])
+
+  const toggleDay = useCallback((index: number) => {
+    setSettings(prev => {
+      const next = new Set(prev.days)
+      if (next.has(index)) next.delete(index)
+      else next.add(index)
+      return { ...prev, days: Array.from(next).sort((a,b)=>a-b) }
+    })
+  }, [setSettings])
+
+  const setFromSlot = useCallback((dayDate: Date, h: number, m: number) => {
     const d = new Date(dayDate)
     d.setHours(h, m, 0, 0)
     setDate(d.toISOString().slice(0,10))
     setTime(d.toTimeString().slice(0,5))
-  }
+  }, [setDate, setTime])
+
+  const handleSlotEvent = useCallback((event: SlotEvent) => {
+    const { dayIndex, date: slotDate, hour, minute, type } = event
+    const slotValue = hour + minute / 60
+    if (availabilityMode) {
+      if (type === 'start') {
+        setAvailabilityDrag({ day: dayIndex, start: slotValue })
+        setAvailabilityPreview({ day: dayIndex, start: slotValue, end: slotValue + slotMinutes / 60 })
+      } else if (type === 'enter' && availabilityDrag && availabilityDrag.day === dayIndex) {
+        const start = Math.min(availabilityDrag.start, slotValue)
+        const end = Math.max(availabilityDrag.start, slotValue + slotMinutes / 60)
+        setAvailabilityPreview({ day: dayIndex, start, end })
+      } else if (type === 'end') {
+        const baseline = availabilityDrag?.day === dayIndex ? availabilityDrag.start : slotValue
+        const start = Math.min(baseline, slotValue)
+        const end = Math.max(baseline + slotMinutes / 60, slotValue + slotMinutes / 60)
+        setAvailabilityDrag(null)
+        setAvailabilityPreview(null)
+        setSettings(prev => {
+          const daysSet = new Set(prev.days)
+          daysSet.add(dayIndex)
+          const workStart = Math.max(0, Math.floor(Math.min(start, prev.workEnd)))
+          const workEnd = Math.min(24, Math.max(Math.ceil(end), workStart + 1))
+          return { ...prev, workStart, workEnd, days: Array.from(daysSet).sort((a,b)=>a-b) }
+        })
+      }
+    } else if (type === 'start') {
+      setFromSlot(slotDate, hour, minute)
+    }
+  }, [availabilityDrag, availabilityMode, setFromSlot, slotMinutes, setSettings])
 
   return (
     <div className={styles.page}>
@@ -195,39 +312,72 @@ export default function SessionsPage() {
 
             {/* Weekly grid */}
             <Paper sx={{ p: 2 }}>
-              <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
+              <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', md: 'center' }} sx={{ mb: 1, gap: 1 }}>
                 <Typography variant="subtitle1" fontWeight={700}>Weekly calendar</Typography>
-                <Stack direction="row" spacing={1}>
+                <Stack direction="row" spacing={1} flexWrap="wrap" alignItems="center">
                   <Button size="small" onClick={() => setWeekStart(new Date(weekStart.getTime() - 7*24*60*60*1000))}>Prev</Button>
                   <Button size="small" onClick={() => setWeekStart(new Date())}>Today</Button>
                   <Button size="small" onClick={() => setWeekStart(new Date(weekStart.getTime() + 7*24*60*60*1000))}>Next</Button>
+                  <Button
+                    size="small"
+                    variant={availabilityMode ? 'contained' : 'outlined'}
+                    onClick={() => setAvailabilityMode(v => !v)}
+                  >{availabilityMode ? 'Done editing' : 'Edit availability'}</Button>
                 </Stack>
               </Stack>
+              {availabilityMode && (
+                <Typography variant="caption" sx={{ mb: 1, display: 'block', color: 'rgba(255,255,255,0.7)' }}>
+                  Drag across cells to set working hours. Click day names to toggle availability.
+                </Typography>
+              )}
               <Box sx={{ display: 'grid', gridTemplateColumns: `100px repeat(7, 1fr)`, borderTop: '1px solid #2a2a2a', borderLeft: '1px solid #2a2a2a', userSelect: 'none' }}>
                 {/* Header row */}
                 <Box />
-                {days.map((d, i) => (
-                  <Box key={i} sx={{ borderRight: '1px solid #2a2a2a', p: 1, textAlign: 'center', fontWeight: 700, opacity: settings.days.includes(i) ? 1 : 0.4 }}>{d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</Box>
-                ))}
+                {days.map((d, i) => {
+                  const isActive = settings.days.includes(i)
+                  return (
+                    <Box
+                      key={i}
+                      onClick={availabilityMode ? () => toggleDay(i) : undefined}
+                      sx={{
+                        borderRight: '1px solid #2a2a2a',
+                        p: 1,
+                        textAlign: 'center',
+                        fontWeight: 700,
+                        opacity: isActive ? 1 : 0.4,
+                        cursor: availabilityMode ? 'pointer' : 'default',
+                        transition: 'opacity 0.15s ease, transform 0.15s ease',
+                        '&:hover': availabilityMode ? { opacity: 1, transform: 'translateY(-2px)' } : undefined,
+                      }}
+                    >
+                      {d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
+                    </Box>
+                  )
+                })}
                 {/** Drag selection state */}
                 {/* Track selection in component state */}
-                
-              {hours.map((h) => (
-                <>
-                  <Box key={`h-${h}`} sx={{ borderRight: '1px solid #2a2a2a', borderBottom: '1px solid #2a2a2a', p: 1 }}>{`${String(h).padStart(2,'0')}:00`}</Box>
-                  {days.map((d, di) => (
+                {hours.map((h) => (
+                  <Fragment key={`row-${h}`}>
+                    <Box sx={{ borderRight: '1px solid #2a2a2a', borderBottom: '1px solid #2a2a2a', p: 1 }}>{`${String(h).padStart(2,'0')}:00`}</Box>
+                    {days.map((d, di) => (
                       <GridColumn
                         key={`c-${h}-${di}`}
                         dayIndex={di}
                         date={d}
                         hour={h}
                         minutesList={minutes}
-                        onPick={setFromSlot}
-                        enabled={settings.days.includes(di)}
+                        onSlotEvent={handleSlotEvent}
+                        sessionMap={sessionBySlot}
+                        selectedSlotKey={selectedSlotKey}
+                        availabilityPreview={availabilityPreview}
+                        availabilityMode={availabilityMode}
+                        isDayActive={settings.days.includes(di)}
+                        workStart={settings.workStart}
+                        workEnd={settings.workEnd}
                       />
                     ))}
-                </>
-              ))}
+                  </Fragment>
+                ))}
               </Box>
             </Paper>
 
@@ -293,29 +443,130 @@ export default function SessionsPage() {
   );
 }
 
-// A small interactive column component that supports mouse drag selection
-function GridColumn({ dayIndex, date, hour, minutesList, onPick, enabled }: { dayIndex: number; date: Date; hour: number; minutesList: number[]; onPick: (d: Date, h: number, m: number) => void; enabled: boolean }) {
+// Weekly planner column with session overlays and availability editing
+function GridColumn({
+  dayIndex,
+  date,
+  hour,
+  minutesList,
+  onSlotEvent,
+  sessionMap,
+  selectedSlotKey,
+  availabilityPreview,
+  availabilityMode,
+  isDayActive,
+  workStart,
+  workEnd,
+}: {
+  dayIndex: number;
+  date: Date;
+  hour: number;
+  minutesList: number[];
+  onSlotEvent: (event: SlotEvent) => void;
+  sessionMap: Map<string, SessionItem[]>;
+  selectedSlotKey: string | null;
+  availabilityPreview: { day: number; start: number; end: number } | null;
+  availabilityMode: boolean;
+  isDayActive: boolean;
+  workStart: number;
+  workEnd: number;
+}) {
   const [dragging, setDragging] = useState(false)
   const [hoverIndex, setHoverIndex] = useState<number | null>(null)
+  const lastMinuteRef = useRef<number>(minutesList[0] ?? 0)
+  const interactive = availabilityMode || isDayActive
+  const dateKey = formatDateKey(date)
+
+  const fireEvent = (type: SlotEvent["type"], minute: number) => {
+    if (!interactive) return
+    onSlotEvent({ type, dayIndex, date, hour, minute })
+  }
+
   return (
-    <Box sx={{ display: 'grid', gridTemplateRows: `repeat(${minutesList.length}, 1fr)` }}
-      onMouseLeave={() => { setDragging(false); setHoverIndex(null) }}>
-      {minutesList.map((m, mi) => (
-        <Box key={mi}
-          onMouseDown={(e) => { if (!enabled) return; e.preventDefault(); setDragging(true); onPick(date, hour, m); setHoverIndex(mi) }}
-          onMouseEnter={() => { if (dragging && enabled) { setHoverIndex(mi) } }}
-          onMouseUp={() => { setDragging(false) }}
-          sx={{
-            borderRight: '1px solid #2a2a2a',
-            borderBottom: mi === minutesList.length - 1 ? '1px solid #2a2a2a' : 'none',
-            p: 0.5,
-            cursor: enabled ? 'crosshair' : 'not-allowed',
-            bgcolor: hoverIndex === mi ? 'rgba(26,224,128,0.12)' : 'transparent',
-            '&:hover': { bgcolor: enabled ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.02)' },
-            opacity: enabled ? 1 : 0.4,
-          }}
-        />
-      ))}
+    <Box
+      sx={{ display: 'grid', gridTemplateRows: `repeat(${minutesList.length}, 1fr)` }}
+      onMouseLeave={() => {
+        if (dragging && interactive) {
+          fireEvent('end', lastMinuteRef.current)
+        }
+        setDragging(false)
+        setHoverIndex(null)
+      }}
+    >
+      {minutesList.map((minute, mi) => {
+        const slotStart = hour + minute / 60
+        const slotKey = makeSlotKey(dateKey, hour, minute)
+        const sessions = sessionMap.get(slotKey) ?? []
+        const isAvailable = isDayActive && slotStart >= workStart && slotStart < workEnd
+        const isPreview = availabilityPreview?.day === dayIndex && slotStart >= (availabilityPreview?.start ?? 0) && slotStart < (availabilityPreview?.end ?? 0)
+        const isSelected = selectedSlotKey === slotKey
+
+        let background = 'transparent'
+        if (isAvailable) background = 'rgba(255,255,255,0.025)'
+        if (isPreview) background = 'rgba(26,224,128,0.12)'
+        if (isSelected) background = 'rgba(26,224,128,0.18)'
+        if (sessions.length) background = 'rgba(26,224,128,0.32)'
+
+        const session = sessions[0]
+        const attendee = session?.user_email || session?.user_id || ''
+        const sessionTitle = session?.title || 'Session'
+
+        return (
+          <Box
+            key={mi}
+            onMouseDown={(e) => {
+              if (!interactive) return
+              e.preventDefault()
+              setDragging(true)
+              setHoverIndex(mi)
+              lastMinuteRef.current = minute
+              fireEvent('start', minute)
+            }}
+            onMouseEnter={() => {
+              if (dragging && interactive) {
+                setHoverIndex(mi)
+                lastMinuteRef.current = minute
+                fireEvent('enter', minute)
+              }
+            }}
+            onMouseUp={() => {
+              if (interactive) {
+                fireEvent('end', minute)
+              }
+              setDragging(false)
+              setHoverIndex(null)
+            }}
+            sx={{
+              borderRight: '1px solid #2a2a2a',
+              borderBottom: mi === minutesList.length - 1 ? '1px solid #2a2a2a' : 'none',
+              p: 0.5,
+              minHeight: 36,
+              cursor: availabilityMode ? 'crosshair' : (interactive ? 'pointer' : 'not-allowed'),
+              bgcolor: background,
+              opacity: interactive ? 1 : 0.35,
+              transition: 'background-color 0.12s ease, opacity 0.12s ease',
+              outline: availabilityMode && hoverIndex === mi ? '1px solid rgba(26,224,128,0.35)' : 'none',
+              '&:hover': interactive ? { bgcolor: sessions.length ? 'rgba(26,224,128,0.36)' : 'rgba(26,224,128,0.12)' } : undefined,
+            }}
+          >
+            {sessions.length > 0 ? (
+              <Stack spacing={0.25} sx={{ px: 0.25 }}>
+                <Typography variant="caption" sx={{ fontWeight: 700, fontSize: '0.7rem', color: '#0b0b0b' }}>{sessionTitle}</Typography>
+                {attendee && (
+                  <Typography variant="caption" sx={{ fontSize: '0.6rem', color: '#0b0b0b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{attendee}</Typography>
+                )}
+                {sessions.length > 1 && (
+                  <Typography variant="caption" sx={{ fontSize: '0.6rem', color: '#0b0b0b' }}>{`+${sessions.length - 1} more`}</Typography>
+                )}
+              </Stack>
+            ) : (
+              <Typography variant="caption" sx={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.55)' }}>
+                {availabilityMode ? (isAvailable ? 'Available' : 'Off') : ''}
+              </Typography>
+            )}
+          </Box>
+        )
+      })}
     </Box>
   )
 }
