@@ -1,5 +1,30 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## MiniMe Persona Builder
+
+The **MiniMe** page now lets you feed in a YouTube link, grab the transcript, send it to Gemini for persona analysis, and store the results (plus a 10 second mp3 clip) in Supabase.
+
+### Environment and setup
+
+- Install new dependencies: `npm install @google/generative-ai youtube-transcript ytdl-core fluent-ffmpeg ffmpeg-static @types/fluent-ffmpeg`.
+- Provide a Gemini API key via `GOOGLE_GENERATIVE_AI_API_KEY`.
+- Ensure the Supabase service role key (`SUPABASE_SERVICE_ROLE_KEY`) is present so the API route can insert records and upload to storage.
+- Create a Supabase storage bucket named `minime-clips` (public read recommended) and a table `minime_personas` with columns matching:
+  - `id` (uuid, default gen_random_uuid, primary key)
+  - `created_at` (timestamptz, default now)
+  - `video_url` (text)
+  - `video_id` (text)
+  - `persona_summary` (text)
+  - `transcript` (text)
+  - `clip_storage_path` (text, nullable)
+  - `clip_public_url` (text, nullable)
+
+### Runtime notes
+
+- The API endpoint lives at `/api/minime/process` and expects `{ "videoUrl": "https://..." }`.
+- It relies on `ffmpeg-static`; no external binary install is required, but keep an eye on cold-start time in serverless environments.
+- Audio capture may occasionally fail for videos without audio-only streams; the persona summary still persists in that case.
+
 ## Getting Started
 
 First, run the development server:

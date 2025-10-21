@@ -19,7 +19,6 @@ export async function GET(req: NextRequest) {
         .from('trainer')
         .select('subs, display_name, bio')
         .eq('trainer_id', trainer)
-        .limit(1)
       if (error) throw error
       tRow = data as any[]
     } catch {
@@ -27,7 +26,6 @@ export async function GET(req: NextRequest) {
         .from('trainer')
         .select('subs')
         .eq('trainer_id', trainer)
-        .limit(1)
       tRow = data as any[]
     }
     const subs = Array.isArray(tRow?.[0]?.subs) ? (tRow![0]!.subs as string[]) : []

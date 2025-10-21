@@ -43,11 +43,7 @@ type Tier = {
 };
 
 export default function PaymentsSettings() {
-  const [tiers, setTiers] = useState<Tier[]>([
-    { key: "basic", name: "Basic", price: 9.99, active: true },
-    { key: "plus", name: "Plus", price: 19.99, active: true },
-    { key: "pro", name: "Pro", price: 39.99, active: false },
-  ]);
+  const [tiers, setTiers] = useState<Tier[]>([]);
   const [saving, setSaving] = useState(false);
   const [snack, setSnack] = useState<string | null>(null);
   const [trainerPhoto, setTrainerPhoto] = useState<string | null>(null);
