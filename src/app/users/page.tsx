@@ -81,6 +81,7 @@ export default function Users() {
   // right panel data
   const [userRoutines, setUserRoutines] = useState<Routine[]>([]);
   const [summary, setSummary] = useState<string>("");
+  const [fallbackSummary, setFallbackSummary] = useState<string>("");
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [summaryWarning, setSummaryWarning] = useState<string | null>(null);
   const [trainerRoutines, setTrainerRoutines] = useState<Routine[]>([]);
@@ -155,7 +156,7 @@ export default function Users() {
   useEffect(() => {
     let alive = true;
 
-    const fetchInsights = async (userId: string) => {
+    const fetchInsights = async (userId: string, defaultSummary: string) => {
       setSummaryLoading(true);
       setSummaryWarning(null);
       try {
@@ -168,16 +169,26 @@ export default function Users() {
         if (!response.ok) {
           throw new Error(payload?.error || "Failed to generate AI insights");
         }
-        if (typeof payload?.summary === "string" && payload.summary.trim()) {
-          setSummary(payload.summary.trim());
-        }
-        if (payload?.warning && typeof payload.warning === "string") {
-          setSummaryWarning(payload.warning);
+        const summaryText =
+          typeof payload?.summary === "string" ? payload.summary.trim() : "";
+        if (summaryText) {
+          setSummary(summaryText);
+          if (payload?.warning && typeof payload.warning === "string") {
+            setSummaryWarning(payload.warning);
+          } else {
+            setSummaryWarning(null);
+          }
         } else {
-          setSummaryWarning(null);
+          setSummary(defaultSummary);
+          setSummaryWarning(
+            payload?.warning && typeof payload.warning === "string"
+              ? payload.warning
+              : "Gemini returned no insight; showing baseline instead."
+          );
         }
       } catch (err: any) {
         if (!alive) return;
+        setSummary(defaultSummary);
         setSummaryWarning(err?.message || "AI insights unavailable.");
       } finally {
         if (!alive) return;
@@ -189,6 +200,7 @@ export default function Users() {
       if (!selectedUser) {
         setUserRoutines([]);
         setSummary("");
+        setFallbackSummary("");
         setSummaryLoading(false);
         setSummaryWarning(null);
         return;
@@ -210,14 +222,19 @@ export default function Users() {
           ? (payload.routines as Routine[])
           : [];
         setUserRoutines(items);
-        setSummary(basicSummarize(items));
+        const baseline = basicSummarize(items);
+        setFallbackSummary(baseline);
+        setSummary("");
         setSummaryWarning(null);
-        fetchInsights(selectedUser);
+        fetchInsights(selectedUser, baseline);
       } catch (err: any) {
         if (alive) {
-          setError(err?.message || "Failed to load routines");
+          const baseline = basicSummarize([]);
+          setFallbackSummary(baseline);
+          setSummary(baseline);
           setSummaryWarning(err?.message || "AI insights unavailable.");
           setSummaryLoading(false);
+          setError(err?.message || "Failed to load routines");
         }
       }
     };

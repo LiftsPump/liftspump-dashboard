@@ -236,8 +236,8 @@ export async function GET(req: NextRequest) {
               const portal = await stripe.billingPortal.sessions.create({ customer: existingCustomerId, return_url: success })
               return NextResponse.redirect(portal.url, { status: 302 })
             }
-          }
-        }*/
+          }*/
+        }
       } catch {}
     }
 

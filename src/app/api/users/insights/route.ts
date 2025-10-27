@@ -2,7 +2,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createServerSupabase } from '@/utils/supabase/server'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 
-const MODEL_ID = process.env.USER_INSIGHTS_MODEL || 'gemini-1.5-flash'
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
+export const maxDuration = 45
+
+const MODEL_ID = process.env.USER_INSIGHTS_MODEL || 'gemini-2.5-pro'
 
 const formatDate = (iso: string | null) => {
   if (!iso) return 'n/a'
@@ -109,7 +113,10 @@ export async function GET(req: NextRequest) {
 
   const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY
   if (!apiKey) {
-    return NextResponse.json({ summary: fallback })
+    return NextResponse.json({
+      summary: fallback,
+      warning: 'Gemini API key is not configured.',
+    })
   }
 
   try {
@@ -135,7 +142,7 @@ export async function GET(req: NextRequest) {
     const prompt = [
       'You are an elite fitness coach generating quick AI insights for another trainer about their client.',
       'Respond with exactly three concise bullet insights followed by a final single-sentence action recommendation (<=25 words).',
-      'Use plain English, no markdown code fences.',
+      'Bullets must start with "•". Use plain English, no code fences.',
       'Focus on training consistency, intensity, and next best steps. Be positive but direct.',
       '',
       'Client profile:',
@@ -155,19 +162,69 @@ export async function GET(req: NextRequest) {
           parts: [{ text: prompt }],
         },
       ],
-      generationConfig: {
-        maxOutputTokens: 200,
-        temperature: 0.6,
-      },
     })
 
-    const raw = result.response.text()?.trim()
-    if (!raw) {
-      return NextResponse.json({ summary: fallback })
+    const primaryCandidate = result.response.candidates?.find((candidate) => {
+      const reason = candidate.finishReason ?? ''
+      return reason !== 'SAFETY'
+    }) ?? result.response.candidates?.[0]
+
+    if (!primaryCandidate) {
+      return NextResponse.json({
+        summary: fallback,
+        warning: 'Gemini returned no candidates.',
+      })
     }
 
-    return NextResponse.json({ summary: raw })
+    const blocked = primaryCandidate.safetyRatings?.find((rating) => (rating.probability || '').includes('HIGH'))
+    if (blocked) {
+      return NextResponse.json({
+        summary: fallback,
+        warning: `Gemini blocked the insight (${blocked.category}).`,
+      })
+    }
+
+    const textParts = primaryCandidate.content?.parts
+      ?.map((part: any) => {
+        if (typeof part?.text === 'string' && part.text.trim()) {
+          return part.text
+        }
+        if (Array.isArray(part?.parts)) {
+          const nestedText = part.parts
+            .map((nested: any) => (typeof nested?.text === 'string' ? nested.text : ''))
+            .filter(Boolean)
+            .join('\n')
+          if (nestedText.trim()) return nestedText
+        }
+        return ''
+      })
+      .filter(Boolean) ?? []
+
+    let combined = textParts.join('\n').trim()
+    if (!combined) {
+      combined = result.response.text()?.trim() || ''
+    }
+
+    if (!combined && typeof primaryCandidate.content?.parts === 'undefined') {
+      const rawText = (primaryCandidate as any).text
+      if (typeof rawText === 'string') {
+        combined = rawText.trim()
+      }
+    }
+
+    if (!combined) {
+      return NextResponse.json({
+        summary: fallback,
+        warning: 'Gemini produced an empty insight.',
+      })
+    }
+
+    return NextResponse.json({ summary: combined })
   } catch (err: any) {
-    return NextResponse.json({ summary: fallback, warning: err?.message || 'Gemini request failed' })
+    console.error('Gemini user insights failed', err)
+    return NextResponse.json({
+      summary: fallback,
+      warning: err?.message || 'Gemini request failed',
+    })
   }
 }
