@@ -188,7 +188,7 @@ function JoinInner() {
               {already ? (
                 <Stack spacing={1.5}>
                   <Alert severity="success">
-                    You're already subscribed. Open the app to keep progressing.
+                    You are already subscribed. Open the app to keep progressing.
                   </Alert>
                   <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} flexWrap="wrap">
                     <Button
