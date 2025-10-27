@@ -357,7 +357,7 @@ export default function Routines() {
                 flexDirection: { xs: "column", lg: "row" },
                 gap: { xs: 2, lg: 2.5 },
                 width: "100%",
-                maxWidth: 1000,
+                maxWidth: 1200,
                 margin: "0 auto",
                 height: { xs: "auto", lg: "72vh" },
                 overflow: { xs: "visible", lg: "hidden" },

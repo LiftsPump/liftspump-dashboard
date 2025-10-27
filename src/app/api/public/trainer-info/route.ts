@@ -30,16 +30,22 @@ export async function GET(req: NextRequest) {
     }
     const subs = Array.isArray(tRow?.[0]?.subs) ? (tRow![0]!.subs as string[]) : []
     const subsCount = subs.length
-    console.log(tRow)
     const displayName = (tRow?.[0]?.display_name as string) || null
     const bio = (tRow?.[0]?.bio as string) || null
+    const photoUrl = (tRow?.[0]?.photo_url as string) || null
     const { count: tiersCount } = await admin
       .from('tiers')
       .select('*', { count: 'exact', head: true })
       .eq('trainer', trainer)
       .eq('active', true)
-    return NextResponse.json({ subs_count: subsCount, tiers_count: typeof tiersCount === 'number' ? tiersCount : 0, display_name: displayName, bio })
+    return NextResponse.json({
+      subs_count: subsCount,
+      tiers_count: typeof tiersCount === 'number' ? tiersCount : 0,
+      display_name: displayName,
+      bio,
+      photo_url: photoUrl,
+    })
   } catch {
-    return NextResponse.json({ subs_count: 0, tiers_count: 0, display_name: null, bio: null })
+    return NextResponse.json({ subs_count: 0, tiers_count: 0, display_name: null, bio: null, photo_url: null })
   }
 }

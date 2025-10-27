@@ -1,13 +1,12 @@
 "use client";
 import Header from "../../components/Header";
 import styles from "../page.module.css";
-import { Box, Paper, Stack, Typography, Button, Chip, Divider, CircularProgress, Alert, IconButton, Tooltip, Avatar } from "@mui/material";
+import { Box, Paper, Stack, Typography, Button, Chip, Divider, CircularProgress, Alert, Avatar } from "@mui/material";
 import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
 import StarRateRoundedIcon from "@mui/icons-material/StarRateRounded";
-import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import ArrowForwardIosRoundedIcon from "@mui/icons-material/ArrowForwardIosRounded";
 import { useSearchParams, useRouter } from "next/navigation";
-import { useEffect, useMemo, useState, Suspense } from "react";
+import { useEffect, useMemo, useState, Suspense, useRef } from "react";
 import { useSupabaseClient, useSession } from "@supabase/auth-helpers-react";
 import useDocumentTitle from "../../hooks/useDocumentTitle";
 
@@ -19,6 +18,7 @@ function JoinInner() {
   const router = useRouter();
   const trainerId = params.get("trainer_id");
   const status = params.get("status");
+  const sessionIdParam = params.get("session_id");
   const preTier = params.get('tier');
   const autoStart = params.get('start') === '1';
   const ok = (status ?? "").toLowerCase() === "success";
@@ -32,15 +32,20 @@ function JoinInner() {
   const [error, setError] = useState<string | null>(null);
   const [already, setAlready] = useState(false);
   const [trainerPhoto, setTrainerPhoto] = useState<string | null>(null);
-  const [trainerStats, setTrainerStats] = useState<{ subs_count: number; tiers_count: number } | null>(null);
   const [trainerName, setTrainerName] = useState<string | null>(null);
   const [trainerBio, setTrainerBio] = useState<string | null>(null);
+  const [finalizeStatus, setFinalizeStatus] = useState<'idle' | 'pending' | 'success' | 'error'>('idle');
+  const [finalizeMessage, setFinalizeMessage] = useState<string | null>(null);
   const selectedTier = useMemo(() => tiers.find(t => t.key === pick) || null, [tiers, pick]);
+  const hasFinalized = useRef(false);
 
   useEffect(() => {
     const run = async () => {
       if (!trainerId) return;
       setLoading(true); setError(null); setAlready(false);
+      hasFinalized.current = false;
+      setFinalizeStatus('idle');
+      setFinalizeMessage(null);
       try {
         // Load public trainer info (photo + counts)
         try {
@@ -48,7 +53,7 @@ function JoinInner() {
           const pjson = await pres.json()
           setTrainerName(pjson?.display_name ?? null)
           setTrainerBio(pjson?.bio ?? null)
-          setTrainerStats({ subs_count: Number(pjson?.subs_count) || 0, tiers_count: Number(pjson?.tiers_count) || 0 })
+          setTrainerPhoto(pjson?.photo_url ?? null)
         } catch {}
         const res = await fetch(`/api/public/tiers?trainer_id=${encodeURIComponent(trainerId)}`, { cache: 'no-store' })
         const json = await res.json()
@@ -89,6 +94,56 @@ function JoinInner() {
     run();
   }, [trainerId, session?.user?.id, supabase]);
 
+  useEffect(() => {
+    if (!ok || !trainerId || !sessionIdParam || !session?.user?.id) {
+      return;
+    }
+    if (sessionIdParam.includes('CHECKOUT_SESSION_ID')) {
+      return;
+    }
+    if (finalizeStatus !== 'idle') {
+      return;
+    }
+    if (hasFinalized.current) {
+      return;
+    }
+    let cancelled = false;
+    const finalize = async () => {
+      hasFinalized.current = true;
+      setFinalizeStatus('pending');
+      setFinalizeMessage('Finalizing your subscription…');
+      try {
+        const res = await fetch('/api/subscriptions/complete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ session_id: sessionIdParam, trainer_id: trainerId }),
+        });
+        const payload = await res.json().catch(() => ({}));
+        if (!res.ok || !payload?.ok) {
+          throw new Error(payload?.error || 'Failed to finalize subscription');
+        }
+        if (cancelled) return;
+        setFinalizeStatus('success');
+        setFinalizeMessage('All set! Your trainer access is ready.');
+        setAlready(true);
+        if (typeof window !== 'undefined') {
+          const url = new URL(window.location.href);
+          url.searchParams.delete('session_id');
+          const nextSearch = url.searchParams.toString();
+          const target = `${url.pathname}${nextSearch ? `?${nextSearch}` : ''}`;
+          router.replace(target, { scroll: false });
+        }
+      } catch (err: any) {
+        if (cancelled) return;
+        hasFinalized.current = false;
+        setFinalizeStatus('error');
+        setFinalizeMessage(err?.message || 'Could not finalize your subscription.');
+      }
+    };
+    finalize();
+    return () => { cancelled = true; };
+  }, [ok, trainerId, sessionIdParam, session?.user?.id, router, already, finalizeStatus]);
+
   const subscribe = () => {
     if (!trainerId || !pick) return;
     const base = typeof window !== 'undefined' ? window.location.origin : '';
@@ -114,8 +169,7 @@ function JoinInner() {
         run();
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoStart, session?.user, trainerId, preTier, already]);
+  }, [autoStart, session?.user, trainerId, preTier, already, pick]);
 
   const IOS_DEEP_LINK = 'liftspump://';
   const IOS_STORE_FALLBACK = 'https://testflight.apple.com/join/rqthvAXa';
@@ -184,6 +238,19 @@ function JoinInner() {
                   ) : null}
                 </Stack>
               )}
+              {ok && finalizeMessage ? (
+                <Alert
+                  severity={finalizeStatus === 'error' ? 'error' : finalizeStatus === 'success' ? 'success' : 'info'}
+                  sx={{ alignItems: 'center' }}
+                  action={finalizeStatus === 'error' ? (
+                    <Button color="inherit" size="small" onClick={() => { hasFinalized.current = false; setFinalizeStatus('idle'); setFinalizeMessage(null); }}>
+                      Retry
+                    </Button>
+                  ) : undefined}
+                >
+                  {finalizeMessage}
+                </Alert>
+              ) : null}
               <Divider sx={{ my: 1 }} />
               {already ? (
                 <Stack spacing={1.5}>

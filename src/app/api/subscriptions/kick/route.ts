@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
     const customerId = (cust?.[0]?.customer_id as string) || null
     if (!customerId) return NextResponse.json({ error: 'No customer' }, { status: 404 })
 
-    const { data: subs } = await admin
+    /*const { data: subs } = await admin
       .from('stripe_subscriptions')
       .select('id,status')
       .eq('trainer', trainer)
@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
       if (immediate) await stripe.subscriptions.cancel(subId)
       else await stripe.subscriptions.update(subId, { cancel_at_period_end: true })
       await admin.from('stripe_subscriptions').upsert({ id: subId, customer_id: customerId, trainer, status: 'canceled' }, { onConflict: 'id' })
-    }
+    }*/
 
     // Remove links
     const { data: tRows } = await admin

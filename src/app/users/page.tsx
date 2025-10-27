@@ -81,6 +81,8 @@ export default function Users() {
   // right panel data
   const [userRoutines, setUserRoutines] = useState<Routine[]>([]);
   const [summary, setSummary] = useState<string>("");
+  const [summaryLoading, setSummaryLoading] = useState(false);
+  const [summaryWarning, setSummaryWarning] = useState<string | null>(null);
   const [trainerRoutines, setTrainerRoutines] = useState<Routine[]>([]);
   const [assigning, setAssigning] = useState(false);
   const [routinePick, setRoutinePick] = useState<Routine | null>(null);
@@ -152,8 +154,45 @@ export default function Users() {
   // ---- when a user is selected, fetch their routine history & summarize ----
   useEffect(() => {
     let alive = true;
+
+    const fetchInsights = async (userId: string) => {
+      setSummaryLoading(true);
+      setSummaryWarning(null);
+      try {
+        const response = await fetch(
+          `/api/users/insights?user_id=${encodeURIComponent(userId)}`,
+          { cache: "no-store" }
+        );
+        const payload = await response.json().catch(() => ({}));
+        if (!alive) return;
+        if (!response.ok) {
+          throw new Error(payload?.error || "Failed to generate AI insights");
+        }
+        if (typeof payload?.summary === "string" && payload.summary.trim()) {
+          setSummary(payload.summary.trim());
+        }
+        if (payload?.warning && typeof payload.warning === "string") {
+          setSummaryWarning(payload.warning);
+        } else {
+          setSummaryWarning(null);
+        }
+      } catch (err: any) {
+        if (!alive) return;
+        setSummaryWarning(err?.message || "AI insights unavailable.");
+      } finally {
+        if (!alive) return;
+        setSummaryLoading(false);
+      }
+    };
+
     const load = async () => {
-      if (!selectedUser) return;
+      if (!selectedUser) {
+        setUserRoutines([]);
+        setSummary("");
+        setSummaryLoading(false);
+        setSummaryWarning(null);
+        return;
+      }
 
       try {
         const response = await fetch(
@@ -172,12 +211,17 @@ export default function Users() {
           : [];
         setUserRoutines(items);
         setSummary(basicSummarize(items));
+        setSummaryWarning(null);
+        fetchInsights(selectedUser);
       } catch (err: any) {
         if (alive) {
           setError(err?.message || "Failed to load routines");
+          setSummaryWarning(err?.message || "AI insights unavailable.");
+          setSummaryLoading(false);
         }
       }
     };
+
     load();
     return () => {
       alive = false;
@@ -352,7 +396,7 @@ export default function Users() {
                 flexDirection: { xs: "column", lg: "row" },
                 gap: { xs: 2, lg: 2.5 },
                 width: "100%",
-                maxWidth: 1000,
+                maxWidth: 1200,
                 margin: "0 auto",
                 height: { xs: "auto", lg: "72vh" },
                 overflow: { xs: "visible", lg: "hidden" },
@@ -374,6 +418,8 @@ export default function Users() {
               <UserDetail
                 selectedProfile={selectedProfile as any}
                 summary={summary}
+                summaryLoading={summaryLoading}
+                summaryWarning={summaryWarning}
                 trainerRoutines={trainerRoutines as any}
                 repeatChoice={repeatChoice}
                 onChangeRepeatChoice={setRepeatChoice}

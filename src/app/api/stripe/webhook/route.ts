@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
       const status = sub?.status ?? 'active'
       const priceId = sub?.items?.data?.[0]?.price?.id ?? null
       const periodEnd = sub?.current_period_end ? new Date(sub.current_period_end * 1000).toISOString() : null
-      await admin.from('stripe_subscriptions').upsert({
+      /*await admin.from('stripe_subscriptions').upsert({
         id: subscriptionId ?? `sub_${customerId}`,
         customer_id: customerId,
         trainer: trainerId,
@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
         price_id: priceId,
         tier_key: tierKey ?? null,
         current_period_end: periodEnd,
-      }, { onConflict: 'id' })
+      }, { onConflict: 'id' })*/
     }
     const unlinkSub = async (customerId: string, subscriptionId?: string | null) => {
       if (!supabaseUrl || !serviceKey) return

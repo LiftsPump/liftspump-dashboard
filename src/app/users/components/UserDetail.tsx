@@ -7,6 +7,8 @@ import DeleteIcon from "@mui/icons-material/Delete"
 export default function UserDetail({
   selectedProfile,
   summary,
+  summaryLoading,
+  summaryWarning,
   trainerRoutines,
   repeatChoice,
   onChangeRepeatChoice,
@@ -21,6 +23,8 @@ export default function UserDetail({
 }: {
   selectedProfile: any;
   summary: string;
+  summaryLoading: boolean;
+  summaryWarning: string | null;
   trainerRoutines: any[];
   repeatChoice: string;
   onChangeRepeatChoice: (value: string) => void;
@@ -178,7 +182,17 @@ export default function UserDetail({
 
         <Paper sx={{ p: 2, mb: 2, border: "1px solid", borderColor: "divider", bgcolor: "background.paper" }}>
           <Typography variant="h6" color="text.primary" sx={{ mb: 0.5, fontWeight: 700 }}>AI summary</Typography>
-          <Typography variant="body1" sx={{ whiteSpace: "pre-wrap" }}>{summary || "No data yet."}</Typography>
+          <Typography
+            variant="body1"
+            sx={{ whiteSpace: "pre-wrap", opacity: summaryLoading ? 0.7 : 1 }}
+          >
+            {summaryLoading ? "Generating AI insight…" : (summary || "No data yet.")}
+          </Typography>
+          {summaryWarning ? (
+            <Typography variant="caption" color="warning.main" sx={{ display: "block", mt: 0.5 }}>
+              {summaryWarning}
+            </Typography>
+          ) : null}
         </Paper>
 
         <Stack

@@ -107,6 +107,36 @@ export async function GET(req: NextRequest) {
   const success = returnUrl || `${origin}/users`
   const cancel = `${origin}/payments`
 
+  const successUrl = (() => {
+    try {
+      const url = new URL(success, origin)
+      const hash = url.hash || ''
+      url.hash = ''
+      url.searchParams.set('status', 'success')
+      if (trainerId) url.searchParams.set('trainer_id', trainerId)
+      if (tierKey) url.searchParams.set('tier', tierKey)
+      const base = url.toString()
+      const joiner = url.search ? '&' : '?'
+      return `${base}${joiner}session_id={CHECKOUT_SESSION_ID}${hash}`
+    } catch {
+      const glue = success.includes('?') ? '&' : '?'
+      return `${success}${glue}status=success&session_id={CHECKOUT_SESSION_ID}`
+    }
+  })()
+
+  const cancelUrl = (() => {
+    try {
+      const url = new URL(cancel, origin)
+      url.searchParams.set('status', 'cancel')
+      if (trainerId) url.searchParams.set('trainer_id', trainerId)
+      if (tierKey) url.searchParams.set('tier', tierKey)
+      return url.toString()
+    } catch {
+      const glue = cancel.includes('?') ? '&' : '?'
+      return `${cancel}${glue}status=cancel`
+    }
+  })()
+
   try {
     // Build line items prioritizing the tier's own price
     // 1) If tier has a Stripe price, use it.
@@ -166,8 +196,8 @@ export async function GET(req: NextRequest) {
       allow_promotion_codes: true,
       metadata: meta,
       subscription_data: { metadata: meta },
-      success_url: success + (success.includes('?') ? '&' : '?') + 'status=success',
-      cancel_url: cancel + (cancel.includes('?') ? '&' : '?') + 'status=cancel',
+      success_url: successUrl,
+      cancel_url: cancelUrl,
       line_items: lineItems,
     }
 
@@ -192,7 +222,7 @@ export async function GET(req: NextRequest) {
             .eq('trainer', trainerId)
             .limit(1)
           existingCustomerId = (cust?.[0]?.customer_id as string) || null
-          if (existingCustomerId) {
+          /*if (existingCustomerId) {
             baseParams.customer = existingCustomerId
             const { data: subs } = await admin
               .from('stripe_subscriptions')
@@ -207,7 +237,7 @@ export async function GET(req: NextRequest) {
               return NextResponse.redirect(portal.url, { status: 302 })
             }
           }
-        }
+        }*/
       } catch {}
     }
 

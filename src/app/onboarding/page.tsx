@@ -10,18 +10,29 @@ import PersonAddIcon from "@mui/icons-material/PersonAdd";
 import PhotoCameraIcon from "@mui/icons-material/PhotoCamera";
 import PlaylistAddIcon from "@mui/icons-material/PlaylistAdd";
 import useDocumentTitle from "../../hooks/useDocumentTitle";
+import { useRouter } from "next/navigation";
 
 export default function OnboardingPage() {
   useDocumentTitle("Onboarding | Liftspump");
   const { isLoading: authLoading } = useSessionContext();
   const session = useSession();
   const supabase = useSupabaseClient();
+  const router = useRouter();
 
   const [trainerId, setTrainerId] = useState<string | null>(null);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [connectId, setConnectId] = useState<string>("");
   const [saving, setSaving] = useState(false);
   const [snack, setSnack] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (authLoading) return;
+    if (session?.user) return;
+    if (typeof window === "undefined") return;
+    const currentSearch = window.location.search || "";
+    const nextPath = `/onboarding${currentSearch}`;
+    router.push(`/login?next=${encodeURIComponent(nextPath)}`);
+  }, [authLoading, session?.user, router]);
 
   useEffect(() => {
     let alive = true;
@@ -49,7 +60,17 @@ export default function OnboardingPage() {
     if (trainerId) { setSnack('Trainer already exists'); return; }
     const newId = (typeof crypto !== 'undefined' && 'randomUUID' in crypto) ? (crypto as any).randomUUID() : Math.random().toString(36).slice(2) + Date.now().toString(36);
     const { error } = await supabase.from('trainer').insert({ creator_id: uid, trainer_id: newId });
-    if (error) setSnack(error.message); else { setTrainerId(newId); setSnack('Trainer created'); }
+    if (error) { setSnack(error.message); return; }
+    const { error: profileError } = await supabase
+      .from('profile')
+      .update({ trainer: newId })
+      .eq('creator_id', uid);
+    setTrainerId(newId);
+    if (profileError) {
+      setSnack(`Trainer created, but profile link failed: ${profileError.message}`);
+    } else {
+      setSnack('Trainer created');
+    }
   };
 
   const seedTiers = async () => {
@@ -64,6 +85,21 @@ export default function OnboardingPage() {
     setSaving(false);
     setSnack(error ? error.message : 'Tiers seeded');
   };
+
+  useEffect(() => {
+    const uid = session?.user?.id || null;
+    if (!uid || !trainerId) return;
+    const ensure = async () => {
+      const { error: linkError } = await supabase
+        .from('profile')
+        .update({ trainer: trainerId })
+        .eq('creator_id', uid);
+      if (linkError) {
+        console.warn('Failed to ensure profile trainer link', linkError);
+      }
+    };
+    ensure();
+  }, [trainerId, session?.user?.id, supabase]);
 
   const uploadPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
