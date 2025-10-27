@@ -9,6 +9,7 @@ import EditCalendarIcon from "@mui/icons-material/EditCalendar";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSupabaseClient, useSession, useSessionContext } from "@supabase/auth-helpers-react";
+import useDocumentTitle from "../../hooks/useDocumentTitle";
 
 type Eligible = { user_id: string; email?: string; name?: string };
 type SessionItem = { id: string; trainer: string; user_id: string; user_email?: string | null; start_iso: string; end_iso: string; meet_url: string; title?: string };
@@ -26,6 +27,7 @@ const formatDateKey = (date: Date) => `${date.getFullYear()}-${pad(date.getMonth
 const makeSlotKey = (dateKey: string, hour: number, minute: number) => `${dateKey}T${pad(hour)}:${pad(minute)}`;
 
 export default function SessionsPage() {
+  useDocumentTitle("Sessions | Liftspump");
   const supabase = useSupabaseClient();
   const session = useSession();
   const { isLoading } = useSessionContext();
@@ -273,7 +275,12 @@ export default function SessionsPage() {
         <Navigation />
         <div className={styles.pageContent}>
           <Stack spacing={2}>
-            <Stack direction="row" spacing={1} alignItems="center">
+            <Stack
+              direction={{ xs: "column", sm: "row" }}
+              spacing={1}
+              alignItems={{ xs: "flex-start", sm: "center" }}
+              sx={{ gap: { xs: 0.75, sm: 1 } }}
+            >
               <Typography variant="h5" fontWeight={800}>Sessions</Typography>
               <Typography variant="body2" sx={{ opacity: 0.8 }}>
                 High‑tier client coaching in 15‑minute slots
@@ -285,14 +292,14 @@ export default function SessionsPage() {
               borderRadius: 2 }}>
               <Typography variant="subtitle1" fontWeight={800}>Schedule a 15‑minute Google Meet</Typography>
               <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5} alignItems={{ xs: 'stretch', md: 'center' }} sx={{ mt: 1 }}>
-                <TextField select label="Client (high‑tier)" size="small" value={pickUser} onChange={(e) => setPickUser(e.target.value)} sx={{ minWidth: 260 }}>
+                <TextField select label="Client (high‑tier)" size="small" value={pickUser} onChange={(e) => setPickUser(e.target.value)} sx={{ minWidth: { xs: '100%', md: 260 } }}>
                   {eligible.map(u => (
                     <MenuItem key={u.user_id} value={u.user_id}>{u.name || u.email || u.user_id}</MenuItem>
                   ))}
                 </TextField>
-                <TextField label="Date" type="date" size="small" value={date} onChange={(e) => setDate(e.target.value)} InputLabelProps={{ shrink: true }} />
-                <TextField label="Time" type="time" size="small" value={time} onChange={(e) => setTime(e.target.value)} InputLabelProps={{ shrink: true }} />
-                <TextField label="Title (optional)" size="small" value={title} onChange={(e) => setTitle(e.target.value)} sx={{ flex: 1 }} />
+                <TextField label="Date" type="date" size="small" value={date} onChange={(e) => setDate(e.target.value)} InputLabelProps={{ shrink: true }} sx={{ minWidth: { xs: '100%', md: 160 } }} />
+                <TextField label="Time" type="time" size="small" value={time} onChange={(e) => setTime(e.target.value)} InputLabelProps={{ shrink: true }} sx={{ minWidth: { xs: '100%', md: 140 } }} />
+                <TextField label="Title (optional)" size="small" value={title} onChange={(e) => setTitle(e.target.value)} sx={{ flex: { xs: 'unset', md: 1 } }} />
                 <Button variant="contained" onClick={schedule} disabled={!trainerId || !eligible.length}
                   sx={{
                     px: 3,

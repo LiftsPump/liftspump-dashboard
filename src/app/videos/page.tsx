@@ -10,6 +10,7 @@ import LinkIcon from "@mui/icons-material/Link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSupabaseClient, useSession, useSessionContext } from "@supabase/auth-helpers-react";
+import useDocumentTitle from "../../hooks/useDocumentTitle";
 
 function normalizeYouTubeUrl(input: string): string | null {
   const url = input.trim();
@@ -33,6 +34,7 @@ function normalizeYouTubeUrl(input: string): string | null {
 }
 
 export default function VideosPage() {
+  useDocumentTitle("Videos | Liftspump");
   const router = useRouter();
   const session = useSession();
   const { isLoading: authLoading } = useSessionContext();
@@ -137,16 +139,28 @@ export default function VideosPage() {
       <main className={styles.main}>
         <Navigation />
         <div className={styles.pageContent}>
-          <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2 }}>
+          <Stack
+            direction={{ xs: "column", sm: "row" }}
+            spacing={1}
+            alignItems={{ xs: "stretch", sm: "center" }}
+            sx={{ mb: 2, gap: { xs: 1, sm: 1.25 } }}
+          >
             <LinkIcon />
             <Typography variant="h5" fontWeight={700}>Videos</Typography>
-            <Box flex={1} />
-            <Button onClick={() => save(videos)} disabled={saving} variant="outlined" size="small" sx={{
-              borderColor: 'divider',
-              backgroundColor: 'rgba(255,255,255,0.06)',
-              backdropFilter: 'blur(8px)',
-              WebkitBackdropFilter: 'blur(8px)'
-            }}>
+            <Box sx={{ flex: { xs: "unset", sm: 1 } }} />
+            <Button
+              onClick={() => save(videos)}
+              disabled={saving}
+              variant="outlined"
+              size="small"
+              sx={{
+                borderColor: 'divider',
+                backgroundColor: 'rgba(255,255,255,0.06)',
+                backdropFilter: 'blur(8px)',
+                WebkitBackdropFilter: 'blur(8px)',
+                alignSelf: { xs: 'flex-start', sm: 'center' },
+              }}
+            >
               {saving ? 'Saving…' : 'Save'}
             </Button>
           </Stack>
@@ -193,7 +207,7 @@ export default function VideosPage() {
                     </Typography>
                     <Typography variant="caption" sx={{ opacity: 0.8, display: 'block' }} noWrap title={v}>{v}</Typography>
                   </Box>
-                  <Stack direction="row" spacing={1}>
+                  <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
                     <Button size="small" href={v} target="_blank" rel="noopener noreferrer" variant="outlined" sx={{
                       borderColor: 'divider',
                       backgroundColor: 'rgba(255,255,255,0.06)',

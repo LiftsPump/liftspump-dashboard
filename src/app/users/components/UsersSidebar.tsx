@@ -28,9 +28,35 @@ export default function UsersSidebar({
   inviteUser: () => void;
 }) {
   return (
-    <Paper elevation={1} sx={{ minWidth: 320, width: 360, display: "flex", flexDirection: "column", borderRadius: 2, overflow: "hidden", bgcolor: "background.paper", color: "text.primary" }}>
-      <Box sx={{ p: 1.5, borderBottom: "2px solid", borderColor: "primary.main", position: "sticky", top: 0, bgcolor: "background.paper", zIndex: 1 }}>
-        <Stack direction="row" spacing={1} alignItems="center">
+    <Paper
+      elevation={1}
+      sx={{
+        width: { xs: "100%", lg: 360 },
+        minWidth: { xs: "auto", lg: 320 },
+        display: "flex",
+        flexDirection: "column",
+        borderRadius: 2,
+        overflow: "hidden",
+        bgcolor: "background.paper",
+        color: "text.primary",
+      }}
+    >
+      <Box
+        sx={{
+          p: 1.5,
+          borderBottom: "2px solid",
+          borderColor: "primary.main",
+          position: "sticky",
+          top: 0,
+          bgcolor: "background.paper",
+          zIndex: 1,
+        }}
+      >
+        <Stack
+          direction={{ xs: "column", sm: "row" }}
+          spacing={1}
+          alignItems={{ xs: "stretch", sm: "center" }}
+        >
           <TextField
             value={query}
             onChange={(e) => onQueryChange(e.target.value)}
@@ -50,7 +76,7 @@ export default function UsersSidebar({
           </Button>
         </Stack>
       </Box>
-      <Box sx={{ overflowY: "auto", maxHeight: "80vh" }}>
+      <Box sx={{ overflowY: "auto", maxHeight: { xs: "none", lg: "80vh" } }}>
         {loading && !authLoading && (
           <Box sx={{ display: "flex", alignItems: "center", gap: 1, p: 2 }}>
             <CircularProgress size={20} />

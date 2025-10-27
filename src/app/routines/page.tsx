@@ -18,6 +18,7 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import exercisesCatalog from "../../data/exercises.json";
 import RoutinesSidebar from "./components/RoutinesSidebar";
 import RoutineDetail from "./components/RoutineDetail";
+import useDocumentTitle from "../../hooks/useDocumentTitle";
 
 enum RoutineItem {
   Cardio = "Cardio",
@@ -73,6 +74,7 @@ type CatalogExercise = {
 
 
 export default function Routines() {
+  useDocumentTitle("Routines | Liftspump");
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -352,13 +354,13 @@ export default function Routines() {
             <Box
               sx={{
                 display: "flex",
-                flexDirection: "row",
-                gap: 2,
+                flexDirection: { xs: "column", lg: "row" },
+                gap: { xs: 2, lg: 2.5 },
                 width: "100%",
-                maxWidth: 1200,
+                maxWidth: 1000,
                 margin: "0 auto",
-                height: "72vh",
-                overflow: "hidden",
+                height: { xs: "auto", lg: "72vh" },
+                overflow: { xs: "visible", lg: "hidden" },
               }}
             >
               <RoutinesSidebar
@@ -374,9 +376,18 @@ export default function Routines() {
               />
 
               <Paper elevation={1} sx={{ flex: 1, display: "flex", flexDirection: "column", borderRadius: 2, overflow: "hidden", bgcolor: "background.paper", color: "text.primary" }}>
-                <Box sx={{ flex: 1, overflowY: "auto", p: 2 }}>
+                <Box sx={{ flex: 1, overflowY: "auto", p: 2, position: "relative" }}>
                   {selected && (
-                    <Box sx={{ position: "absolute", right: '13%', mt: 1, display: 'flex', justifyContent: 'flex-end' }}>
+                    <Box
+                      sx={{
+                        position: { xs: "static", lg: "absolute" },
+                        right: { lg: "13%" },
+                        mt: { xs: 0, lg: 1 },
+                        mb: { xs: 1.5, lg: 0 },
+                        display: "flex",
+                        justifyContent: { xs: "flex-start", lg: "flex-end" },
+                      }}
+                    >
                       <Button size="small" color="error" startIcon={<DeleteIcon />} onClick={deleteRoutine} disabled={saving}>Delete routine</Button>
                     </Box>
                   )}

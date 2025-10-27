@@ -135,18 +135,40 @@ export default function UserDetail({
     return null;
   };
   return (
-    <Paper elevation={1} sx={{ flex: 1, display: "flex", flexDirection: "column", borderRadius: 2, overflow: "hidden", bgcolor: "background.paper", color: "text.primary" }}>
+    <Paper
+      elevation={1}
+      sx={{
+        flex: 1,
+        display: "flex",
+        flexDirection: "column",
+        borderRadius: 2,
+        overflow: "hidden",
+        bgcolor: "background.paper",
+        color: "text.primary",
+        width: "100%",
+      }}
+    >
       <Box sx={{ flex: 1, overflowY: "auto", p: 2 }}>
-        <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 0.5 }}>
+        <Stack
+          direction={{ xs: "column", sm: "row" }}
+          spacing={1}
+          alignItems={{ xs: "flex-start", sm: "center" }}
+          sx={{ mb: 0.5, gap: { xs: 0.5, sm: 1 } }}
+        >
           <Typography variant="h6" color="text.primary" sx={{ fontWeight: 700 }}>
             {selectedProfile.first_name || selectedProfile.last_name ? `${selectedProfile.first_name ?? ''} ${selectedProfile.last_name ?? ''}` : (selectedProfile.username || selectedProfile.email || 'User')}
           </Typography>
-          <Box flex={1} />
+          <Box sx={{ flex: { xs: "unset", sm: 1 } }} />
           {onKick && (
             <Button size="small" color="error" variant="outlined" onClick={onKick}>Kick</Button>
           )}
         </Stack>
-        <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
+        <Stack
+          direction={{ xs: "column", sm: "row" }}
+          spacing={1}
+          alignItems={{ xs: "flex-start", sm: "center" }}
+          sx={{ mb: 1, flexWrap: "wrap" }}
+        >
           {bmi != null && (
             <Chip size="small" label={`BMI ${bmi}${bmiCat ? ` · ${bmiCat}` : ''}`} variant="outlined" />
           )}
@@ -159,14 +181,24 @@ export default function UserDetail({
           <Typography variant="body1" sx={{ whiteSpace: "pre-wrap" }}>{summary || "No data yet."}</Typography>
         </Paper>
 
-        <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
+        <Stack
+          direction={{ xs: "column", sm: "row" }}
+          spacing={1}
+          alignItems={{ xs: "flex-start", sm: "center" }}
+          sx={{ mb: 1, gap: { xs: 0.75, sm: 1 } }}
+        >
           <FitnessCenterIcon fontSize="small" />
           <Typography variant="h6" color="text.primary" sx={{ fontWeight: 700 }}>Assign a trainer routine</Typography>
         </Stack>
-        <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2 }}>
+        <Stack
+          direction={{ xs: "column", md: "row" }}
+          spacing={1}
+          alignItems={{ xs: "stretch", md: "center" }}
+          sx={{ mb: 2, gap: { xs: 1, md: 1 } }}
+        >
           <Autocomplete
             size="small"
-            sx={{ minWidth: 320 }}
+            sx={{ minWidth: { xs: "100%", md: 320 } }}
             options={trainerRoutines}
             getOptionLabel={(o) => o.name ?? "Untitled"}
             onChange={(e, val) => onPickRoutine(val)}
@@ -181,7 +213,7 @@ export default function UserDetail({
             label="Repeat"
             value={repeatChoice}
             onChange={(event) => onChangeRepeatChoice(event.target.value)}
-            sx={{ minWidth: 180 }}
+            sx={{ minWidth: { xs: "100%", md: 180 } }}
             disabled={assigning}
           >
             {repeatOptions.map((option) => (
@@ -194,7 +226,12 @@ export default function UserDetail({
         </Stack>
 
         <Divider sx={{ my: 1.5 }} />
-        <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
+        <Stack
+          direction={{ xs: "column", sm: "row" }}
+          spacing={1}
+          alignItems={{ xs: "flex-start", sm: "center" }}
+          sx={{ mb: 1 }}
+        >
           <Typography variant="h6" color="text.primary" sx={{ fontWeight: 700 }}>Assigned routines</Typography>
           <Chip size="small" label={`${assignedRoutines.length}`} />
         </Stack>

@@ -8,9 +8,11 @@ import { useSupabaseClient } from "@supabase/auth-helpers-react";
 
 import GoogleLogo from "../../data/Google.png";
 import AppleLogo from "../../data/Apple.svg";
+import useDocumentTitle from "../../hooks/useDocumentTitle";
 
 
 export default function Login() {
+  useDocumentTitle("Login | Liftspump");
   const supabase = useSupabaseClient();
 
   const [email, setEmail] = useState("");

@@ -10,6 +10,7 @@ import LayersIcon from "@mui/icons-material/Layers";
 import FitnessCenterIcon from "@mui/icons-material/FitnessCenter";
 import InsightsIcon from "@mui/icons-material/Insights";
 import PaidIcon from "@mui/icons-material/Paid";
+import useDocumentTitle from "../hooks/useDocumentTitle";
 
 export default function Home() {
   const supabase = useSupabaseClient();
@@ -25,6 +26,8 @@ export default function Home() {
   const [mrr, setMrr] = useState<number>(0);
   const [chart, setChart] = useState<{ day: string; subs: number; revenue: number }[]>([]);
   const [activity, setActivity] = useState<{ id: string; title: string; subtitle: string; date: string }[]>([]);
+
+  useDocumentTitle("Dashboard | Liftspump");
 
   useEffect(() => {
     let alive = true;
@@ -176,13 +179,20 @@ export default function Home() {
         <Navigation />
         <div className={styles.pageContent}>
           <Stack spacing={2} sx={{ width: '100%' }}>
-            <Stack direction="row" spacing={1} alignItems="center">
+            <Stack
+              direction={{ xs: 'column', sm: 'row' }}
+              spacing={1}
+              alignItems={{ xs: 'stretch', sm: 'center' }}
+              sx={{ flexWrap: 'wrap', gap: { xs: 1, sm: 1.5 } }}
+            >
               <Typography variant="h5" fontWeight={700} color="white">Overview</Typography>
               {trainerId && <Chip size="small" label={`Trainer ${trainerId.slice(0,8)}…`} />}
-              <Box flex={1} />
-              <Button variant="outlined" onClick={copyInvite} disabled={!trainerId}>Copy invite link</Button>
-              <Button variant="outlined" onClick={() => location.assign('/payments')}>Payments</Button>
-              <Button variant="outlined" onClick={() => location.assign('/api/stripe/portal?mode=express')}>Stripe Express</Button>
+              <Box sx={{ flex: { xs: 'unset', sm: 1 } }} />
+              <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', justifyContent: { xs: 'flex-start', sm: 'flex-end' } }}>
+                <Button variant="outlined" onClick={copyInvite} disabled={!trainerId}>Copy invite link</Button>
+                <Button variant="outlined" onClick={() => location.assign('/payments')}>Payments</Button>
+                <Button variant="outlined" onClick={() => location.assign('/api/stripe/portal?mode=express')}>Stripe Express</Button>
+              </Stack>
             </Stack>
 
             {loading ? (

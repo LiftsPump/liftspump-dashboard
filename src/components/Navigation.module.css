@@ -1,6 +1,7 @@
 .listSelector {
-  width: 240px;
-  margin: 2rem auto;
+  width: clamp(200px, 22vw, 260px);
+  min-width: 200px;
+  margin: 0;
   color: #e5e7eb;
   border-radius: 12px;
   border: 1px solid var(--glass-border);
@@ -29,20 +30,36 @@
   border-radius: 50% !important;
 }
 
-@media (max-width: 600px) {
+@media (max-width: 900px) {
   .listSelector {
     width: 100%;
-    margin: 1rem 0;
-    border-radius: 0;
+    min-width: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    border-radius: 12px;
     box-shadow: none;
+    overflow: visible;
+    background-image: none;
   }
 
   .navButton {
-    padding: 0.75rem 0.5rem;
+    padding: 0.75rem 0.75rem;
+    flex: 1 1 170px;
+    border-bottom: none;
+    border-radius: 10px;
+    background-color: rgba(255,255,255,0.04);
   }
 
   .navIcon {
     width: 32px !important;
     height: 32px !important;
+  }
+}
+
+@media (max-width: 560px) {
+  .navButton {
+    flex: 1 1 140px;
   }
 }

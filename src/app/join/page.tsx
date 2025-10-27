@@ -9,10 +9,12 @@ import ArrowForwardIosRoundedIcon from "@mui/icons-material/ArrowForwardIosRound
 import { useSearchParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, Suspense } from "react";
 import { useSupabaseClient, useSession } from "@supabase/auth-helpers-react";
+import useDocumentTitle from "../../hooks/useDocumentTitle";
 
 type Tier = { key: string; name: string; price: number; active: boolean };
 
 function JoinInner() {
+  useDocumentTitle("Join | Liftspump");
   const params = useSearchParams();
   const router = useRouter();
   const trainerId = params.get("trainer_id");
@@ -20,7 +22,6 @@ function JoinInner() {
   const preTier = params.get('tier');
   const autoStart = params.get('start') === '1';
   const ok = (status ?? "").toLowerCase() === "success";
-  const APP_STORE = process.env.NEXT_PUBLIC_APP_STORE_URL || '';
   const PLAY_STORE = process.env.NEXT_PUBLIC_PLAY_STORE_URL || '';
 
   const supabase = useSupabaseClient();
@@ -39,7 +40,7 @@ function JoinInner() {
   useEffect(() => {
     const run = async () => {
       if (!trainerId) return;
-      setLoading(true); setError(null);
+      setLoading(true); setError(null); setAlready(false);
       try {
         // Load public trainer info (photo + counts)
         try {
@@ -55,9 +56,28 @@ function JoinInner() {
         setTiers(mapped)
         if (mapped.length) setPick(mapped[0].key)
         if (session?.user?.id) {
-          const sres = await fetch(`/api/public/subscription-status?trainer_id=${encodeURIComponent(trainerId)}&user_id=${encodeURIComponent(session.user.id)}`)
-          const sjson = await sres.json()
-          setAlready(!!sjson?.active)
+          const uid = session.user.id;
+          try {
+            const { data: subData, error: subsError } = await supabase
+              .from('trainer')
+              .select('subs')
+              .eq('trainer_id', trainerId)
+              .limit(1)
+              .single();
+            if (subsError) throw subsError;
+            const list = Array.isArray(subData?.subs) ? (subData.subs as string[]) : [];
+            if (list.includes(uid)) {
+              setAlready(true);
+            } else {
+              const sres = await fetch(`/api/public/subscription-status?trainer_id=${encodeURIComponent(trainerId)}&user_id=${encodeURIComponent(uid)}`)
+              const sjson = await sres.json()
+              setAlready(!!sjson?.active)
+            }
+          } catch {
+            const sres = await fetch(`/api/public/subscription-status?trainer_id=${encodeURIComponent(trainerId)}&user_id=${encodeURIComponent(uid)}`)
+            const sjson = await sres.json()
+            setAlready(!!sjson?.active)
+          }
         }
       } catch (e: any) {
         setError(e?.message || 'Failed to load tiers')
@@ -67,7 +87,7 @@ function JoinInner() {
       }
     };
     run();
-  }, [trainerId, session?.user?.id]);
+  }, [trainerId, session?.user?.id, supabase]);
 
   const subscribe = () => {
     if (!trainerId || !pick) return;
@@ -86,6 +106,7 @@ function JoinInner() {
 
   // If we arrived after login with tier param and start=1, auto start checkout with user_id attached
   useEffect(() => {
+    if (already) return;
     if (autoStart && trainerId) {
       if (preTier) setPick(preTier);
       if (session?.user && (preTier || pick)) {
@@ -94,7 +115,24 @@ function JoinInner() {
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoStart, session?.user, trainerId, preTier]);
+  }, [autoStart, session?.user, trainerId, preTier, already]);
+
+  const IOS_DEEP_LINK = 'liftspump://';
+  const IOS_STORE_FALLBACK = 'https://testflight.apple.com/join/rqthvAXa';
+
+  const openIOSApp = () => {
+    const start = Date.now();
+    // attempt to open the installed app
+    window.location.href = IOS_DEEP_LINK;
+
+    // after a short delay, if we are still here, send to TestFlight fallback
+    setTimeout(() => {
+      const elapsed = Date.now() - start;
+      if (elapsed < 1200) {
+        window.location.href = IOS_STORE_FALLBACK;
+      }
+    }, 800);
+  };
 
   return (
     <div className={styles.page}>
@@ -119,9 +157,27 @@ function JoinInner() {
               </Stack>
               {ok && (
                 <Stack direction={{ xs: 'column', md: 'row' }} spacing={1} alignItems={{ xs: 'stretch', md: 'center' }}>
-                  <Chip color="success" label="Subscription successful" />
-                  {APP_STORE ? (
-                    <Button href={APP_STORE} target="_blank" rel="noopener noreferrer" variant="contained" size="small">Open iOS App</Button>
+                  <Chip
+                    color="success"
+                    label="Subscription successful"
+                    sx={{
+                      fontSize: '1rem',
+                      height: 40,
+                      px: 1.5,
+                      '& .MuiChip-label': {
+                        px: 1.5,
+                        fontWeight: 600,
+                      },
+                    }}
+                  />
+                  {IOS_DEEP_LINK ? (
+                    <Button
+                      onClick={openIOSApp}
+                      size="small"
+                      variant="contained"
+                    >
+                      Open iOS App
+                    </Button>
                   ) : null}
                   {PLAY_STORE ? (
                     <Button href={PLAY_STORE} target="_blank" rel="noopener noreferrer" variant="outlined" size="small">Open Android App</Button>
@@ -129,136 +185,186 @@ function JoinInner() {
                 </Stack>
               )}
               <Divider sx={{ my: 1 }} />
-              <Typography variant="subtitle1" sx={{ opacity: 0.85 }}>Choose a tier</Typography>
-              {loading ? (
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 1 }}>
-                  <CircularProgress size={18} />
-                  <Typography variant="body2">Loading tiers…</Typography>
-                </Box>
-              ) : error ? (
-                <Alert severity="error">{error}</Alert>
+              {already ? (
+                <Stack spacing={1.5}>
+                  <Alert severity="success">
+                    You're already subscribed. Open the app to keep progressing.
+                  </Alert>
+                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} flexWrap="wrap">
+                    <Button
+                      onClick={openIOSApp}
+                      size="small"
+                      variant="contained"
+                      sx={{
+                        borderRadius: 999,
+                        bgcolor: '#1AE080',
+                        color: '#0b0b0b',
+                        boxShadow: '0 10px 24px rgba(26,224,128,0.25)',
+                        '&:hover': { bgcolor: '#19c973', boxShadow: '0 12px 28px rgba(26,224,128,0.35)' },
+                      }}
+                    >
+                      Open iOS App
+                    </Button>
+                    {PLAY_STORE ? (
+                      <Button
+                        href={PLAY_STORE}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        variant="outlined"
+                        size="small"
+                        sx={{ borderRadius: 999 }}
+                      >
+                        Open Android App
+                      </Button>
+                    ) : null}
+                    <Button
+                      variant="outlined"
+                      color="primary"
+                      onClick={() => router.push(`/api/stripe/portal?mode=customer`)}
+                      sx={{
+                        px: 3,
+                        py: 1.25,
+                        borderRadius: 999,
+                        width: { xs: '100%', sm: 'auto' },
+                      }}
+                    >
+                      Manage billing
+                    </Button>
+                  </Stack>
+                </Stack>
               ) : (
-                <Box sx={{
-                  display: 'grid',
-                  gridTemplateColumns: {
-                    xs: '1fr',
-                    sm: 'repeat(2, 1fr)',
-                    md: 'repeat(3, 1fr)'
-                  },
-                  gap: 2,
-                }}>
-                  {tiers.map((t) => {
-                    const selected = pick === t.key
-                    const features = (
-                      t.key.toLowerCase() === 'pro' ? [
-                        'Everything in Plus',
-                        'Priority support',
-                        'Advanced analytics',
-                        'Weekly check-ins',
-                      ] : t.key.toLowerCase() === 'plus' ? [
-                        'Everything in Basic',
-                        'Custom plans',
-                        'Video library access',
-                        'Coach messaging',
-                      ] : [
-                        'Starter workouts',
-                        'Community access',
-                        'Basic tracking',
-                      ]
-                    )
-                    const popular = t.key.toLowerCase() === 'plus'
-                    return (
-                      <Paper key={t.key} sx={{
-                        p: 2.5,
-                        border: '1px solid',
-                        borderColor: selected ? '#1AE080' : '#2a2a2a',
-                        bgcolor: 'rgba(255,255,255,0.02)',
-                        backgroundImage: 'radial-gradient(800px 200px at -10% -40%, rgba(26,224,128,0.06), transparent)',
-                        transition: 'border-color .15s ease, transform .1s ease, box-shadow .15s ease',
-                        borderRadius: 2,
-                        minHeight: 300,
-                        display: 'flex',
-                        flexDirection: 'column',
-                        justifyContent: 'space-between',
-                        '&:hover': { transform: 'translateY(-2px)', boxShadow: '0 10px 28px rgba(0,0,0,0.35)' },
-                      }}>
-                        <Stack spacing={1}>
-                          <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between">
-                            <Typography variant="h6" fontWeight={800}>{t.name}</Typography>
-                            {popular && (
-                              <Chip size="small" icon={<StarRateRoundedIcon />} label="Most popular" sx={{ bgcolor: '#102a1e', color: '#9ef6c5', border: '1px solid #1AE080' }} />
-                            )}
-                          </Stack>
-                          <Typography variant="h3" fontWeight={900} color="white" sx={{ lineHeight: 1.1 }}>
-                            ${t.price.toFixed(2)} <Typography component="span" variant="body2" sx={{ opacity: 0.8 }}>/ month</Typography>
-                          </Typography>
-                          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75, mt: 1 }}>
-                            {features.map((f) => (
-                              <Typography key={f} variant="body2" sx={{ display: 'flex', alignItems: 'center', gap: 1, opacity: 0.95 }}>
-                                <CheckCircleRoundedIcon sx={{ color: '#1AE080' }} fontSize="small" />
-                                {f}
+                <>
+                  <Typography variant="subtitle1" sx={{ opacity: 0.85 }}>Choose a tier</Typography>
+                  {loading ? (
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 1 }}>
+                      <CircularProgress size={18} />
+                      <Typography variant="body2">Loading tiers…</Typography>
+                    </Box>
+                  ) : error ? (
+                    <Alert severity="error">{error}</Alert>
+                  ) : (
+                    <Box sx={{
+                      display: 'grid',
+                      gridTemplateColumns: {
+                        xs: '1fr',
+                        sm: 'repeat(2, 1fr)',
+                        md: 'repeat(3, 1fr)'
+                      },
+                      gap: 2,
+                    }}>
+                      {tiers.map((t) => {
+                        const selected = pick === t.key
+                        const features = (
+                          t.key.toLowerCase() === 'pro' ? [
+                            'Everything in Plus',
+                            'Priority support',
+                            'Advanced analytics',
+                            'Weekly check-ins',
+                          ] : t.key.toLowerCase() === 'plus' ? [
+                            'Everything in Basic',
+                            'Custom plans',
+                            'Video library access',
+                            'Coach messaging',
+                          ] : [
+                            'AI Assistant',
+                            'Routines',
+                            'Custom Exercises',
+                            'Private Videos',
+                          ]
+                        )
+                        const popular = t.key.toLowerCase() === 'plus'
+                        return (
+                          <Paper key={t.key} sx={{
+                            p: 2.5,
+                            border: '1px solid',
+                            borderColor: selected ? '#1AE080' : '#2a2a2a',
+                            bgcolor: 'rgba(255,255,255,0.02)',
+                            backgroundImage: 'radial-gradient(800px 200px at -10% -40%, rgba(26,224,128,0.06), transparent)',
+                            transition: 'border-color .15s ease, transform .1s ease, box-shadow .15s ease',
+                            borderRadius: 2,
+                            minHeight: 300,
+                            display: 'flex',
+                            flexDirection: 'column',
+                            justifyContent: 'space-between',
+                            '&:hover': { transform: 'translateY(-2px)', boxShadow: '0 10px 28px rgba(0,0,0,0.35)' },
+                          }}>
+                            <Stack spacing={1}>
+                              <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between">
+                                <Typography variant="h6" fontWeight={800}>{t.name}</Typography>
+                                {popular && (
+                                  <Chip size="small" icon={<StarRateRoundedIcon />} label="Most popular" sx={{ bgcolor: '#102a1e', color: '#9ef6c5', border: '1px solid #1AE080' }} />
+                                )}
+                              </Stack>
+                              <Typography variant="h3" fontWeight={900} color="white" sx={{ lineHeight: 1.1 }}>
+                                ${t.price.toFixed(2)} <Typography component="span" variant="body2" sx={{ opacity: 0.8 }}>/ month</Typography>
                               </Typography>
-                            ))}
-                          </Box>
-                        </Stack>
-                        <Button
-                          fullWidth
-                          size="medium"
-                          variant={selected ? 'contained' : 'outlined'}
-                          onClick={() => setPick(t.key)}
-                          sx={{ mt: 2 }}
-                        >
-                          {selected ? 'Selected' : 'Choose'}
-                        </Button>
-                      </Paper>
-                    )
-                  })}
-                  {!tiers.length && (
-                    <Typography variant="body2">No active tiers available.</Typography>
+                              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75, mt: 1 }}>
+                                {features.map((f) => (
+                                  <Typography key={f} variant="body2" sx={{ display: 'flex', alignItems: 'center', gap: 1, opacity: 0.95 }}>
+                                    <CheckCircleRoundedIcon sx={{ color: '#1AE080' }} fontSize="small" />
+                                    {f}
+                                  </Typography>
+                                ))}
+                              </Box>
+                            </Stack>
+                            <Button
+                              fullWidth
+                              size="medium"
+                              variant={selected ? 'contained' : 'outlined'}
+                              onClick={() => setPick(t.key)}
+                              sx={{ mt: 2 }}
+                            >
+                              {selected ? 'Selected' : 'Choose'}
+                            </Button>
+                          </Paper>
+                        )
+                      })}
+                      {!tiers.length && (
+                        <Typography variant="body2">No active tiers available.</Typography>
+                      )}
+                    </Box>
                   )}
-                </Box>
+                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+                    {(ok) ? (
+                      <Button
+                        color="primary"
+                        onClick={() => router.push(`/api/stripe/portal?mode=customer`)}
+                        sx={{
+                          px: 3,
+                          py: 1.25,
+                          borderRadius: 999,
+                          width: { xs: '100%', sm: 'auto' },
+                        }}
+                      >
+                        Manage billing
+                      </Button>
+                    ) : (
+                      <Button
+                        size="large"
+                        disabled={!pick || !trainerId}
+                        onClick={subscribe}
+                        endIcon={<ArrowForwardIosRoundedIcon />}
+                        sx={{
+                          px: 3,
+                          py: 1.25,
+                          borderRadius: 999,
+                          bgcolor: '#1AE080',
+                          color: '#0b0b0b',
+                          boxShadow: '0 10px 24px rgba(26,224,128,0.25)',
+                          '&:hover': { bgcolor: '#19c973', boxShadow: '0 12px 28px rgba(26,224,128,0.35)' },
+                          '&:disabled': { bgcolor: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.5)', boxShadow: 'none' },
+                          width: { xs: '100%', sm: 'auto' },
+                        }}
+                      >
+                        {session?.user
+                          ? `Subscribe${selectedTier ? ` — $${selectedTier.price.toFixed(2)}/mo` : ''}`
+                          : 'Login to subscribe'}
+                      </Button>
+                    )}
+                    <Button variant="outlined" onClick={() => router.push('/')} sx={{ borderRadius: 999, width: { xs: '100%', sm: 'auto' } }}>Home</Button>
+                  </Stack>
+                </>
               )}
-              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
-                {already ? (
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    onClick={() => router.push(`/api/stripe/portal?mode=customer`)}
-                    sx={{
-                      px: 3,
-                      py: 1.25,
-                      borderRadius: 999,
-                      width: { xs: '100%', sm: 'auto' },
-                    }}
-                  >
-                    Manage billing
-                  </Button>
-                ) : (
-                  <Button
-                    variant="contained"
-                    size="large"
-                    disabled={!pick || !trainerId}
-                    onClick={subscribe}
-                    endIcon={<ArrowForwardIosRoundedIcon />}
-                    sx={{
-                      px: 3,
-                      py: 1.25,
-                      borderRadius: 999,
-                      bgcolor: '#1AE080',
-                      color: '#0b0b0b',
-                      boxShadow: '0 10px 24px rgba(26,224,128,0.25)',
-                      '&:hover': { bgcolor: '#19c973', boxShadow: '0 12px 28px rgba(26,224,128,0.35)' },
-                      '&:disabled': { bgcolor: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.5)', boxShadow: 'none' },
-                      width: { xs: '100%', sm: 'auto' },
-                    }}
-                  >
-                    {session?.user
-                      ? `Subscribe${selectedTier ? ` — $${selectedTier.price.toFixed(2)}/mo` : ''}`
-                      : 'Login to subscribe'}
-                  </Button>
-                )}
-                <Button variant="outlined" onClick={() => router.push('/')} sx={{ borderRadius: 999, width: { xs: '100%', sm: 'auto' } }}>Home</Button>
-              </Stack>
             </Stack>
           </Box>
         </div>

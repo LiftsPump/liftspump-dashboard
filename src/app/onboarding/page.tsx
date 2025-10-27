@@ -9,8 +9,10 @@ import LinkIcon from "@mui/icons-material/Link";
 import PersonAddIcon from "@mui/icons-material/PersonAdd";
 import PhotoCameraIcon from "@mui/icons-material/PhotoCamera";
 import PlaylistAddIcon from "@mui/icons-material/PlaylistAdd";
+import useDocumentTitle from "../../hooks/useDocumentTitle";
 
 export default function OnboardingPage() {
+  useDocumentTitle("Onboarding | Liftspump");
   const { isLoading: authLoading } = useSessionContext();
   const session = useSession();
   const supabase = useSupabaseClient();
@@ -103,12 +105,27 @@ export default function OnboardingPage() {
         <Navigation />
         <div className={styles.pageContent}>
           <Stack spacing={2}>
-            <Stack direction="row" spacing={1} alignItems="center">
+            <Stack
+              direction={{ xs: "column", sm: "row" }}
+              spacing={1}
+              alignItems={{ xs: "flex-start", sm: "center" }}
+              sx={{ gap: { xs: 0.75, sm: 1 } }}
+            >
               <PersonAddIcon />
               <Typography variant="h5" fontWeight={700}>Trainer onboarding</Typography>
               {trainerId && <Chip size="small" label={`Trainer ${trainerId.slice(0,8)}…`} />}
-              <Box flex={1} />
-              {trainerId && <Button variant="contained" size="small" onClick={copyInvite} startIcon={<LinkIcon />}>Copy invite</Button>}
+              <Box sx={{ flex: { xs: "unset", sm: 1 } }} />
+              {trainerId && (
+                <Button
+                  variant="contained"
+                  size="small"
+                  onClick={copyInvite}
+                  startIcon={<LinkIcon />}
+                  sx={{ alignSelf: { xs: "flex-start", sm: "center" } }}
+                >
+                  Copy invite
+                </Button>
+              )}
             </Stack>
 
             <Grow in timeout={250}><Paper sx={{ p: 2 }}>
@@ -119,7 +136,7 @@ export default function OnboardingPage() {
 
             <Grow in timeout={300}><Paper sx={{ p: 2 }}>
               <Typography variant="subtitle1" fontWeight={700}>Step 2 — Upload photo</Typography>
-              <Stack direction="row" spacing={2} alignItems="center" sx={{ mt: 1 }}>
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={2} alignItems={{ xs: "stretch", sm: "center" }} sx={{ mt: 1 }}>
                 <Avatar src={photoUrl ?? undefined} sx={{ width: 64, height: 64 }} />
                 <label>
                   <input type="file" accept="image/*" hidden onChange={uploadPhoto} />

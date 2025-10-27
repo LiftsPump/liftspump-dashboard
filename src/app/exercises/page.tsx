@@ -9,6 +9,7 @@ import SearchIcon from "@mui/icons-material/Search";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import SaveIcon from "@mui/icons-material/Save";
+import useDocumentTitle from "../../hooks/useDocumentTitle";
 
 type Exercise = {
   id: string
@@ -24,6 +25,7 @@ type Exercise = {
 }
 
 export default function ExercisesPage() {
+  useDocumentTitle("Exercises | Liftspump");
   const supabase = useSupabaseClient();
   const session = useSession();
   const { isLoading } = useSessionContext();
@@ -239,7 +241,7 @@ export default function ExercisesPage() {
             <Paper sx={{ position: 'sticky', top: 0, zIndex: 1, p: 1.25, border: '1px solid #2a2a2a', bgcolor: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(6px)' }}>
               <Stack direction={{ xs: 'column', md: 'row' }} spacing={1} alignItems={{ xs: 'stretch', md: 'center' }}>
                 <Typography variant="h5" fontWeight={800}>Exercises</Typography>
-                <Box flex={1} />
+                <Box sx={{ flex: { xs: 'unset', md: 1 } }} />
                 <TextField
                   inputRef={searchRef}
                   placeholder="Search exercises… (press /)"
@@ -264,19 +266,24 @@ export default function ExercisesPage() {
               {/* Left: results */}
               <Box sx={{ flex: 1 }}>
                 <Paper sx={{ p: 2 }}>
-                  <Stack direction={{ xs: 'column', md: 'row' }} spacing={1} alignItems={{ xs: 'stretch', md: 'center' }} sx={{ mb: 1 }}>
+                  <Stack
+                    direction={{ xs: 'column', md: 'row' }}
+                    spacing={1}
+                    alignItems={{ xs: 'stretch', md: 'center' }}
+                    sx={{ mb: 1 }}
+                  >
                     <Typography variant="subtitle1" fontWeight={700}>Library</Typography>
-                    <Box flex={1} />
-                    <ToggleButtonGroup exclusive value={tab} onChange={(_, v) => { if (v) { setTab(v); setPage(1) } }} size="small">
+                    <Box sx={{ flex: { xs: 'unset', md: 1 } }} />
+                    <ToggleButtonGroup exclusive value={tab} onChange={(_, v) => { if (v) { setTab(v); setPage(1) } }} size="small" sx={{ flexWrap: 'wrap' }}>
                       <ToggleButton value="all">All</ToggleButton>
                       <ToggleButton value="custom">Custom</ToggleButton>
                       <ToggleButton value="builtin">Builtin</ToggleButton>
                     </ToggleButtonGroup>
-                    <TextField select label="Category" size="small" value={categoryFilter} onChange={(e) => { setCategoryFilter(e.target.value); setPage(1) }} sx={{ minWidth: 160 }}>
+                    <TextField select label="Category" size="small" value={categoryFilter} onChange={(e) => { setCategoryFilter(e.target.value); setPage(1) }} sx={{ minWidth: { xs: '100%', md: 160 } }}>
                       <MenuItem value="">All</MenuItem>
                       {categoryOptions.map(c => <MenuItem key={c} value={c}>{c}</MenuItem>)}
                     </TextField>
-                    <TextField select label="Equipment" size="small" value={equipFilter} onChange={(e) => { setEquipFilter(e.target.value); setPage(1) }} sx={{ minWidth: 160 }}>
+                    <TextField select label="Equipment" size="small" value={equipFilter} onChange={(e) => { setEquipFilter(e.target.value); setPage(1) }} sx={{ minWidth: { xs: '100%', md: 160 } }}>
                       <MenuItem value="">All</MenuItem>
                       {equipmentOptions.map(c => {
                         const key = c.toLowerCase()

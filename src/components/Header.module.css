@@ -2,6 +2,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 1rem;
   padding: 1rem 2rem;
   background: var(--glass-bg);
   color: #1AE080;
@@ -31,7 +32,8 @@
 
 @media (max-width: 600px) {
   .header {
-    padding: 0.5rem 1rem;
+    flex-wrap: wrap;
+    padding: 0.75rem 1rem;
   }
 
   .logo {
@@ -39,8 +41,8 @@
   }
 
   .titleText {
-    font-size: 2rem;
-    padding-left: 1rem;
+    font-size: 1.6rem;
+    padding-left: 0.75rem;
   }
 
   .profileImage {

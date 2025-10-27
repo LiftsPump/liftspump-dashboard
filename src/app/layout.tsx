@@ -106,52 +106,77 @@ export default function RootLayout({
     const { session, isLoading } = useSessionContext();
     const supabase = useSupabaseClient();
     const pathname = usePathname();
+    const userId = session?.user?.id ?? null;
+    const isLoggedIn = !!session?.user;
     useEffect(() => {
       if (isLoading) return; // wait until session is resolved
       const onLogin = pathname === "/login";
       const isPublic = pathname === "/join"; // allow public invite page
-      if (!session?.user && !onLogin && !isPublic) router.push("/login");
-      if (session?.user && onLogin) {
-        // Respect ?next= redirect param if present
-        let next = "/";
-        try {
-          const search = typeof window !== 'undefined' ? window.location.search : '';
-          const sp = new URLSearchParams(search);
-          const n = sp.get('next');
-          if (n && n.startsWith('/')) next = n;
-        } catch {}
-        router.push(next);
+      if (!isLoggedIn && !onLogin && !isPublic) {
+        router.replace("/login");
+        return;
       }
-    }, [session, isLoading, pathname, router]);
-    
-    // Auto-create a trainer row on first login (no Connect)
+      if (isLoggedIn && onLogin) {
+        if (!userId) return;
+        let cancelled = false;
+        const redirectAfterLogin = async () => {
+          // Respect ?next= redirect param if present
+          let next = "/";
+          try {
+            const search = typeof window !== 'undefined' ? window.location.search : '';
+            const sp = new URLSearchParams(search);
+            const n = sp.get('next');
+            if (n && n.startsWith('/')) next = n;
+          } catch {}
+          if (next === "/" || next === "") {
+            try {
+              const { data, error } = await supabase
+                .from('trainer')
+                .select('trainer_id')
+                .eq('creator_id', userId)
+                .limit(1);
+              const hasTrainer = !error && !!data?.[0]?.trainer_id;
+              if (!hasTrainer) next = "/join";
+            } catch {
+              next = "/join";
+            }
+          }
+          if (!cancelled) router.replace(next);
+        };
+        redirectAfterLogin();
+        return () => { cancelled = true; };
+      }
+    }, [isLoggedIn, userId, isLoading, pathname, router, supabase]);
+
     useEffect(() => {
-      const ensureTrainer = async () => {
+      if (isLoading) return;
+      if (!userId) return;
+      const openPaths = ["/login", "/join", "/onboarding"];
+      if (openPaths.includes(pathname)) return;
+      let cancelled = false;
+      const enforceTrainerAccess = async () => {
         try {
-          if (!session?.user?.id) return;
-          const uid = session.user.id;
-          const { data } = await supabase
+          const { data, error } = await supabase
             .from('trainer')
             .select('trainer_id')
-            .eq('creator_id', uid)
+            .eq('creator_id', userId)
             .limit(1);
-          if (!data || !data.length) {
-            const newId = (typeof crypto !== 'undefined' && 'randomUUID' in crypto)
-              ? (crypto as any).randomUUID()
-              : Math.random().toString(36).slice(2) + Date.now().toString(36);
-            await supabase.from('trainer').insert({ creator_id: uid, trainer_id: newId });
-          }
-        } catch {}
+          const hasTrainer = !error && !!data?.[0]?.trainer_id;
+          if (!hasTrainer && !cancelled) router.replace("/join");
+        } catch {
+          if (!cancelled) router.replace("/join");
+        }
       };
-      ensureTrainer();
-    }, [session?.user?.id, supabase]);
+      enforceTrainerAccess();
+      return () => { cancelled = true; };
+    }, [userId, isLoading, pathname, router, supabase]);
 
     // First-run redirect to onboarding if missing photo or tiers
     useEffect(() => {
       const checkOnboarding = async () => {
         try {
-          if (!session?.user?.id) return;
-          const uid = session.user.id;
+          if (!userId) return;
+          const uid = userId;
           const { data: tRow } = await supabase
             .from('trainer')
             .select('trainer_id')
@@ -176,7 +201,7 @@ export default function RootLayout({
         } catch {}
       }
       checkOnboarding()
-    }, [session?.user?.id, pathname, supabase, router])
+    }, [userId, pathname, supabase, router])
 
     return null;
   }

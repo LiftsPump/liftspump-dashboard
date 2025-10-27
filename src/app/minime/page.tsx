@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Box,
@@ -23,10 +23,14 @@ import UploadIcon from "@mui/icons-material/Upload";
 import VideocamIcon from "@mui/icons-material/Videocam";
 import KeyIcon from "@mui/icons-material/Key";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
+import MicIcon from "@mui/icons-material/Mic";
+import StopIcon from "@mui/icons-material/Stop";
+import ReplayIcon from "@mui/icons-material/Replay";
 import Header from "../../components/Header";
 import Navigation from "../../components/Navigation";
 import styles from "../page.module.css";
 import { useSupabaseClient, useSession, useSessionContext } from "@supabase/auth-helpers-react";
+import useDocumentTitle from "../../hooks/useDocumentTitle";
 
 type TrainerPersona = {
   name: string;
@@ -56,7 +60,7 @@ type LivekitTokenResponse = {
   };
 };
 
-type CopyField = "token" | "room" | "prompt" | null;
+type CopyField = "token" | "room" | "prompt" | "voice" | null;
 
 const exampleVideo = "https://www.youtube.com/watch?v=dQw4w9WgXcQ";
 
@@ -76,6 +80,7 @@ function formatPersonaSummary(persona: TrainerPersona): string {
 }
 
 export default function MiniMePage() {
+  useDocumentTitle("MiniMe | Liftspump");
   const [videoUrl, setVideoUrl] = useState("");
   const [customPersona, setCustomPersona] = useState("");
   const [loading, setLoading] = useState(false);
@@ -90,6 +95,23 @@ export default function MiniMePage() {
   const [livekitError, setLivekitError] = useState<string | null>(null);
   const [livekitResponse, setLivekitResponse] = useState<LivekitTokenResponse | null>(null);
   const [copiedField, setCopiedField] = useState<CopyField>(null);
+
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const recordedChunksRef = useRef<Blob[]>([]);
+  const recordingIntervalRef = useRef<number | null>(null);
+  const autoStopTimeoutRef = useRef<number | null>(null);
+  const recordingStartRef = useRef<number | null>(null);
+  const recordedUrlRef = useRef<string | null>(null);
+
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingMs, setRecordingMs] = useState(0);
+  const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null);
+  const [recordedUrl, setRecordedUrl] = useState<string | null>(null);
+  const [recordedDurationMs, setRecordedDurationMs] = useState<number | null>(null);
+  const [voiceLoading, setVoiceLoading] = useState(false);
+  const [voiceError, setVoiceError] = useState<string | null>(null);
+  const [voiceSuccess, setVoiceSuccess] = useState<string | null>(null);
+  const [voiceId, setVoiceId] = useState<string | null>(null);
 
   const { bullets, closing } = useMemo(() => {
     if (!personaSummary) {
@@ -111,6 +133,253 @@ export default function MiniMePage() {
     });
     return { bullets: bulletLines, closing: closingLines };
   }, [personaSummary]);
+
+  useEffect(() => {
+    return () => {
+      try {
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+          mediaRecorderRef.current.stop();
+        }
+      } catch (err) {
+        console.warn("Failed to stop recorder during cleanup", err);
+      }
+      if (recordingIntervalRef.current !== null) {
+        window.clearInterval(recordingIntervalRef.current);
+        recordingIntervalRef.current = null;
+      }
+      if (autoStopTimeoutRef.current !== null) {
+        window.clearTimeout(autoStopTimeoutRef.current);
+        autoStopTimeoutRef.current = null;
+      }
+      if (recordedUrlRef.current) {
+        URL.revokeObjectURL(recordedUrlRef.current);
+      }
+    };
+  }, []);
+
+  const cleanupRecordingTimers = () => {
+    if (recordingIntervalRef.current !== null) {
+      window.clearInterval(recordingIntervalRef.current);
+      recordingIntervalRef.current = null;
+    }
+    if (autoStopTimeoutRef.current !== null) {
+      window.clearTimeout(autoStopTimeoutRef.current);
+      autoStopTimeoutRef.current = null;
+    }
+  };
+
+  const stopRecording = () => {
+    const recorder = mediaRecorderRef.current;
+    if (recorder && recorder.state === "recording") {
+      cleanupRecordingTimers();
+      try {
+        recorder.stop();
+      } catch (error) {
+        console.warn("Stopping media recorder failed", error);
+      }
+    }
+  };
+
+  const resetRecording = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
+      stopRecording();
+    }
+    cleanupRecordingTimers();
+    setIsRecording(false);
+    recordingStartRef.current = null;
+    setRecordingMs(0);
+    setRecordedBlob(null);
+    setRecordedDurationMs(null);
+    setVoiceSuccess(null);
+    setVoiceError(null);
+    setVoiceId(null);
+    setRecordedUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return null;
+    });
+    recordedUrlRef.current = null;
+    recordedChunksRef.current = [];
+  };
+
+  const startRecording = async () => {
+    if (voiceLoading) return;
+    setVoiceError(null);
+    setVoiceSuccess(null);
+    setVoiceId(null);
+
+    if (typeof window === "undefined") {
+      setVoiceError("Audio recording is unavailable.");
+      return;
+    }
+    if (!navigator?.mediaDevices?.getUserMedia) {
+      setVoiceError("Microphone access is not supported in this browser.");
+      return;
+    }
+    if (!("MediaRecorder" in window) || !window.MediaRecorder) {
+      setVoiceError("Audio recording is not supported in this browser.");
+      return;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const RecorderClass = window.MediaRecorder;
+      const preferredMime =
+        typeof RecorderClass.isTypeSupported === "function"
+          ? ["audio/webm;codecs=opus", "audio/webm", "audio/mp4"].find((type) =>
+              RecorderClass.isTypeSupported(type)
+            )
+          : undefined;
+      const recorder = preferredMime
+        ? new RecorderClass(stream, { mimeType: preferredMime })
+        : new RecorderClass(stream);
+
+      recordedChunksRef.current = [];
+      recordingStartRef.current = Date.now();
+      setRecordedBlob(null);
+      setRecordedDurationMs(null);
+      setRecordedUrl((prev) => {
+        if (prev) URL.revokeObjectURL(prev);
+        return null;
+      });
+      recordedUrlRef.current = null;
+      setRecordingMs(0);
+      setIsRecording(true);
+
+      recorder.ondataavailable = (event) => {
+        if (event.data && event.data.size > 0) {
+          recordedChunksRef.current.push(event.data);
+        }
+      };
+      recorder.onerror = (event) => {
+        console.error("MediaRecorder error", event);
+        setVoiceError("Recording error occurred. Please try again.");
+        stopRecording();
+      };
+      recorder.onstop = () => {
+        cleanupRecordingTimers();
+        try {
+          stream.getTracks().forEach((track) => track.stop());
+        } catch (err) {
+          console.warn("Failed to stop stream tracks", err);
+        }
+        const finalDuration =
+          recordingStartRef.current !== null ? Date.now() - recordingStartRef.current : recordingMs;
+        recordingStartRef.current = null;
+        setIsRecording(false);
+        if (recordedChunksRef.current.length === 0) {
+          recordedChunksRef.current = [];
+          setRecordedBlob(null);
+          setRecordedDurationMs(finalDuration);
+          setRecordingMs(finalDuration);
+          setRecordedUrl((prev) => {
+            if (prev) URL.revokeObjectURL(prev);
+            return null;
+          });
+          recordedUrlRef.current = null;
+          return;
+        }
+        const mimeType = recorder.mimeType || preferredMime || "audio/webm";
+        const blob = new Blob(recordedChunksRef.current, { type: mimeType });
+        recordedChunksRef.current = [];
+        setRecordedBlob(blob);
+        setRecordedDurationMs(finalDuration);
+        setRecordingMs(finalDuration);
+        const objectUrl = URL.createObjectURL(blob);
+        setRecordedUrl((prev) => {
+          if (prev) URL.revokeObjectURL(prev);
+          return objectUrl;
+        });
+        recordedUrlRef.current = objectUrl;
+      };
+
+      cleanupRecordingTimers();
+      recordingIntervalRef.current = window.setInterval(() => {
+        if (recordingStartRef.current !== null) {
+          setRecordingMs(Date.now() - recordingStartRef.current);
+        }
+      }, 100);
+      autoStopTimeoutRef.current = window.setTimeout(() => {
+        stopRecording();
+      }, 10_000);
+
+      mediaRecorderRef.current = recorder;
+      recorder.start();
+    } catch (error: any) {
+      console.error("Unable to start recording", error);
+      setVoiceError(
+        error?.message?.includes("denied")
+          ? "Microphone permission is required to record."
+          : error?.message || "Failed to start recording."
+      );
+    }
+  };
+
+  const handleUploadVoice = async () => {
+    if (isRecording) {
+      setVoiceError("Stop the recording before uploading.");
+      return;
+    }
+    if (!recordedBlob) {
+      setVoiceError("Record a 5-10 second sample first.");
+      return;
+    }
+    if (!session?.user?.id) {
+      setVoiceError("You need to be signed in to save a voice.");
+      return;
+    }
+
+    setVoiceError(null);
+    setVoiceSuccess(null);
+    setVoiceId(null);
+    setVoiceLoading(true);
+
+    try {
+      const durationForUpload =
+        recordedDurationMs ?? (recordingMs > 0 ? recordingMs : undefined);
+      const filenameSeconds = durationForUpload
+        ? Math.max(1, Math.round(durationForUpload / 1000))
+        : "clip";
+      const formData = new FormData();
+      formData.append(
+        "audio",
+        recordedBlob,
+        `minime-sample-${filenameSeconds}s.${recordedBlob.type.includes("mp4") ? "mp4" : "webm"}`
+      );
+      formData.append("userId", session.user.id);
+      if (durationForUpload !== undefined) {
+        formData.append("durationMs", String(Math.round(durationForUpload)));
+      }
+
+      let payload: any = null;
+      const response = await fetch("/api/minime/voice", {
+        method: "POST",
+        body: formData,
+      });
+      try {
+        payload = await response.json();
+      } catch (parseError) {
+        if (!response.ok) {
+          throw new Error("Unable to create Cartesia voice.");
+        }
+        payload = null;
+      }
+
+      if (!response.ok) {
+        throw new Error(payload?.error || "Cartesia voice creation failed.");
+      }
+      const nextVoiceId: string | undefined =
+        payload?.voiceId ?? payload?.voice_id ?? payload?.id;
+      if (!nextVoiceId) {
+        throw new Error("Cartesia voice saved but response lacked a voice id.");
+      }
+      setVoiceId(nextVoiceId);
+      setVoiceSuccess("Cartesia voice generated and saved to your trainer.");
+    } catch (error: any) {
+      setVoiceError(error?.message || "Failed to create Cartesia voice.");
+    } finally {
+      setVoiceLoading(false);
+    }
+  };
 
   const handleSubmit = async (evt: FormEvent<HTMLFormElement>) => {
     evt.preventDefault();
@@ -176,6 +445,12 @@ export default function MiniMePage() {
     }
   };
 
+  const activeRecordingMs = isRecording
+    ? recordingMs
+    : recordedDurationMs ?? (recordingMs > 0 ? recordingMs : 0);
+  const recordingSecondsLabel =
+    activeRecordingMs > 0 ? `${(activeRecordingMs / 1000).toFixed(1)}s` : null;
+
   return (
     <div className={styles.page}>
       <Header />
@@ -183,7 +458,12 @@ export default function MiniMePage() {
         <Navigation />
         <div className={styles.pageContent}>
           <Stack spacing={3} sx={{ width: "100%" }}>
-            <Stack direction="row" spacing={1} alignItems="center">
+            <Stack
+              direction={{ xs: "column", sm: "row" }}
+              spacing={1}
+              alignItems={{ xs: "flex-start", sm: "center" }}
+              sx={{ gap: { xs: 1, sm: 1.5 } }}
+            >
               <Typography variant="h5" fontWeight={700} color="white">
                 MiniMe Persona Builder
               </Typography>
@@ -193,7 +473,7 @@ export default function MiniMePage() {
                 icon={<AutoAwesomeIcon fontSize="small" />}
                 label="Powered by Gemini + Supabase"
               />
-              <Box flex={1} />
+              <Box sx={{ flex: { xs: "unset", sm: 1 } }} />
               <Button
                 variant="text"
                 size="small"
@@ -241,16 +521,6 @@ export default function MiniMePage() {
                       required
                       disabled={loading}
                       InputLabelProps={{ shrink: true }}
-                    />
-                    <TextField
-                      label="Custom persona (optional)"
-                      placeholder="Paste JSON to override model output"
-                      value={customPersona}
-                      onChange={(e) => setCustomPersona(e.target.value)}
-                      disabled={loading}
-                      InputLabelProps={{ shrink: true }}
-                      multiline
-                      minRows={3}
                     />
                     <Stack direction="row" spacing={2} alignItems="center">
                       <Button
@@ -362,4 +632,3 @@ export default function MiniMePage() {
     </div>
   );
 }
-

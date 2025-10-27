@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import Header from "../../components/Header";
 import styles from "../page.module.css";
 import Navigation from "../../components/Navigation";
+import useDocumentTitle from "../../hooks/useDocumentTitle";
 
 // MUI
 import {
@@ -43,6 +44,7 @@ type Tier = {
 };
 
 export default function PaymentsSettings() {
+  useDocumentTitle("Payments | Liftspump");
   const [tiers, setTiers] = useState<Tier[]>([]);
   const [saving, setSaving] = useState(false);
   const [snack, setSnack] = useState<string | null>(null);
@@ -284,22 +286,29 @@ export default function PaymentsSettings() {
         <main className={styles.main}>
           <Navigation/>
           <div className={styles.pageContent}>
-          <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2 }}>
+          <Stack
+            direction={{ xs: "column", sm: "row" }}
+            spacing={1}
+            alignItems={{ xs: "stretch", sm: "center" }}
+            sx={{ flexWrap: "wrap", gap: { xs: 1, sm: 1.25 }, mb: 2 }}
+          >
             <SettingsIcon />
             <Typography variant="h5" fontWeight={700}>Settings</Typography>
             <Chip label={`${totalActive} active tier${totalActive === 1 ? "" : "s"}`} size="small" />
-            <Box flex={1} />
-            <Button onClick={handleStripePortal} startIcon={<PaymentsIcon />} variant="outlined" size="small">Stripe Express</Button>
-            <Button onClick={handleSave} startIcon={<SaveIcon />} disabled={saving} variant="outlined" size="small">
-              {saving ? "Saving…" : "Save"}
-            </Button>
+            <Box sx={{ flex: { xs: "unset", sm: 1 } }} />
+            <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", justifyContent: { xs: "flex-start", sm: "flex-end" } }}>
+              <Button onClick={handleStripePortal} startIcon={<PaymentsIcon />} variant="outlined" size="small">Stripe Express</Button>
+              <Button onClick={handleSave} startIcon={<SaveIcon />} disabled={saving} variant="outlined" size="small">
+                {saving ? "Saving…" : "Save"}
+              </Button>
+            </Stack>
           </Stack>
 
           <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
             {/* Left: Trainer Profile */}
             <Paper sx={{ p: 2, minWidth: 320, width: { md: 360 }, border: "1px solid", borderColor: "divider", bgcolor: "background.paper" }}>
               <Typography variant="h6" fontWeight={700} sx={{ mb: 1 }}>Trainer profile</Typography>
-              <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={2} alignItems={{ xs: "stretch", sm: "center" }} sx={{ mb: 2 }}>
                 <Avatar src={trainerPhoto ?? undefined} sx={{ width: 72, height: 72 }} />
               </Stack>
               <Stack spacing={1} sx={{ mb: 2 }}>
@@ -334,7 +343,13 @@ export default function PaymentsSettings() {
             {/* Right: Tiers & Pricing */}
             <Box flex={1}>
               <Paper sx={{ p: 2, border: "1px solid", borderColor: "divider", bgcolor: "background.paper", mb: 2 }}>
-                <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
+                <Stack
+                  direction={{ xs: "column", sm: "row" }}
+                  alignItems={{ xs: "stretch", sm: "center" }}
+                  justifyContent="space-between"
+                  spacing={1}
+                  sx={{ mb: 1, gap: { xs: 1, sm: 0 } }}
+                >
                   <Typography variant="h6" fontWeight={700}>Subscription tiers</Typography>
                 </Stack>
                 <Stack spacing={1.5}>
@@ -369,7 +384,7 @@ export default function PaymentsSettings() {
                           label={t.active ? "Active" : "Inactive"}
                           sx={{ ml: { xs: 0, sm: 2 } }}
                         />
-                        <Box flex={1} />
+                        <Box sx={{ flex: { xs: "unset", sm: 1 } }} />
                         <Button color="error" variant="outlined" size="small" onClick={() => removeTier(idx, t.key)}>Remove</Button>
                       </Stack>
                     </Paper>
@@ -383,7 +398,7 @@ export default function PaymentsSettings() {
                 <Typography variant="body2" sx={{ mb: 1 }}>
                   To view your payments dashboard please click on Stripe Express.  On this page you can see your balance and withdraw money.  If you have any issues please email me at <a href="mailto:ahmed@liftspump.com">ahmed@liftspump.com</a>.
                 </Typography>
-                <Stack direction="row" spacing={1}>
+                <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
                   <Button variant="outlined" onClick={handleStripePortal} startIcon={<PaymentsIcon />}>Open Stripe Express</Button>
                 </Stack>
               </Paper>

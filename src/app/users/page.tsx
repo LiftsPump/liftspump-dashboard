@@ -11,6 +11,7 @@ import { useRouter } from "next/navigation";
 import { useSession, useSessionContext } from "@supabase/auth-helpers-react";
 import UsersSidebar from "./components/UsersSidebar";
 import UserDetail from "./components/UserDetail";
+import useDocumentTitle from "../../hooks/useDocumentTitle";
 
 // ---- Types ----
 
@@ -64,6 +65,7 @@ function basicSummarize(routines: Routine[]): string {
 }
 
 export default function Users() {
+  useDocumentTitle("Users | Liftspump");
   const router = useRouter();
 
   // left panel
@@ -347,13 +349,13 @@ export default function Users() {
             <Box
               sx={{
                 display: "flex",
-                flexDirection: "row",
-                gap: 2,
+                flexDirection: { xs: "column", lg: "row" },
+                gap: { xs: 2, lg: 2.5 },
                 width: "100%",
-                maxWidth: 1200,
+                maxWidth: 1000,
                 margin: "0 auto",
-                height: "72vh",
-                overflow: "hidden",
+                height: { xs: "auto", lg: "72vh" },
+                overflow: { xs: "visible", lg: "hidden" },
               }}
             >
               <UsersSidebar
