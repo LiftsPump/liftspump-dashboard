@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient as createServerSupabase } from "@/utils/supabase/server";
+import { createClient as createAdminClient } from '@supabase/supabase-js'
 
 export async function GET(req: NextRequest) {
   const supabase = createServerSupabase();
+  const admin = createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
   const url = new URL(req.url);
   const userId = url.searchParams.get("user_id");
 
@@ -41,10 +46,11 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await admin
     .from("routines")
     .select("id, name, type, text, picture, days, weekly, date, duration, creator_id")
     .eq("creator_id", userId)
+    .neq("type", "ai")
     .order("date", { ascending: false })
     .limit(50);
 

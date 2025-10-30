@@ -9,6 +9,9 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, Suspense, useRef } from "react";
 import { useSupabaseClient, useSession } from "@supabase/auth-helpers-react";
 import useDocumentTitle from "../../hooks/useDocumentTitle";
+import AppleLogo from "../../data/Apple.svg";
+import App from "next/app";
+import Image from "next/image";
 
 type Tier = { key: string; name: string; price: number; active: boolean };
 
@@ -60,7 +63,7 @@ function JoinInner() {
         const mapped = Array.isArray(json?.tiers) ? (json.tiers as Tier[]) : []
         setTiers(mapped)
         if (mapped.length) setPick(mapped[0].key)
-        if (session?.user?.id) {
+        if (session?.user?.id) { 
           const uid = session.user.id;
           try {
             const { data: subData, error: subsError } = await supabase
@@ -83,6 +86,9 @@ function JoinInner() {
             const sjson = await sres.json()
             setAlready(!!sjson?.active)
           }
+          //setLoading(false)
+        } else {
+          //setLoading(false)
         }
       } catch (e: any) {
         setError(e?.message || 'Failed to load tiers')
@@ -224,18 +230,6 @@ function JoinInner() {
                       },
                     }}
                   />
-                  {IOS_DEEP_LINK ? (
-                    <Button
-                      onClick={openIOSApp}
-                      size="small"
-                      variant="contained"
-                    >
-                      Open iOS App
-                    </Button>
-                  ) : null}
-                  {PLAY_STORE ? (
-                    <Button href={PLAY_STORE} target="_blank" rel="noopener noreferrer" variant="outlined" size="small">Open Android App</Button>
-                  ) : null}
                 </Stack>
               )}
               {ok && finalizeMessage ? (
@@ -260,38 +254,40 @@ function JoinInner() {
                   <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} flexWrap="wrap">
                     <Button
                       onClick={openIOSApp}
-                      size="small"
-                      variant="contained"
+                      aria-label="Open in the App Store"
                       sx={{
-                        borderRadius: 999,
-                        bgcolor: '#1AE080',
-                        color: '#0b0b0b',
-                        boxShadow: '0 10px 24px rgba(26,224,128,0.25)',
-                        '&:hover': { bgcolor: '#19c973', boxShadow: '0 12px 28px rgba(26,224,128,0.35)' },
+                        px: 1.5,
+                        py: 0.75,
+                        borderRadius: 12,
+                        bgcolor: '#000',
+                        color: '#fff',
+                        textTransform: 'none',
+                        boxShadow: '0 6px 14px rgba(0,0,0,0.35)',
+                        '&:hover': { bgcolor: '#111', boxShadow: '0 8px 18px rgba(0,0,0,0.45)' },
+                        minWidth: 0,
                       }}
                     >
-                      Open iOS App
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Image src={AppleLogo} alt="Apple" height={25} priority />
+                        <Box sx={{ lineHeight: 1, textAlign: 'left' }}>
+                          <Typography variant="caption" sx={{ display: 'block', fontSize: 11, letterSpacing: 0.2, opacity: 0.9 }}>
+                            Open in 
+                          </Typography>
+                          <Typography variant="subtitle2" sx={{ fontWeight: 700, fontSize: 16, mt: '-2px' }}>
+                            TestFlight
+                          </Typography>
+                        </Box>
+                      </Box>
                     </Button>
-                    {PLAY_STORE ? (
-                      <Button
-                        href={PLAY_STORE}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        variant="outlined"
-                        size="small"
-                        sx={{ borderRadius: 999 }}
-                      >
-                        Open Android App
-                      </Button>
-                    ) : null}
                     <Button
                       variant="outlined"
-                      color="primary"
                       onClick={() => router.push(`/api/stripe/portal?mode=customer`)}
                       sx={{
                         px: 3,
                         py: 1.25,
                         borderRadius: 999,
+                        bgcolor: '#000',
+                        color: '#fff',
                         width: { xs: '100%', sm: 'auto' },
                       }}
                     >
@@ -302,13 +298,15 @@ function JoinInner() {
               ) : (
                 <>
                   <Typography variant="subtitle1" sx={{ opacity: 0.85 }}>Choose a tier</Typography>
-                  {loading ? (
+                  {(loading && !already) ? (
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 1 }}>
                       <CircularProgress size={18} />
-                      <Typography variant="body2">Loading tiers…</Typography>
+                      <Typography variant="body2">Loading...</Typography>
                     </Box>
                   ) : error ? (
                     <Alert severity="error">{error}</Alert>
+                  ) : already ? (
+                    <CircularProgress size={18} />
                   ) : (
                     <Box sx={{
                       display: 'grid',

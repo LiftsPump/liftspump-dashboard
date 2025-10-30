@@ -91,7 +91,7 @@ export default function UserDetail({
       .slice(0, n)
       .map((r) => r.duration as number);
     if (!durations.length) return 0;
-    const m = durations.reduce((a, b) => a + b, 0) / durations.length;
+    const m = durations.reduce((a, b) => a + b, 0) / 60 / durations.length;
     return Math.round(m);
   };
   const strengthLabel = (avgMins: number): string => {
@@ -186,7 +186,7 @@ export default function UserDetail({
             variant="body1"
             sx={{ whiteSpace: "pre-wrap", opacity: summaryLoading ? 0.7 : 1 }}
           >
-            {summaryLoading ? "Generating AI insight…" : (summary || "No data yet.")}
+            {summaryLoading ? "Loading AI insight…" : (summary || "No data yet.")}
           </Typography>
           {summaryWarning ? (
             <Typography variant="caption" color="warning.main" sx={{ display: "block", mt: 0.5 }}>
@@ -286,7 +286,7 @@ export default function UserDetail({
                   <Typography variant="body1">{r.type} · {r.date ? new Date(r.date).toLocaleString() : "n/a"}</Typography>
                 </Box>
                 {r.duration != null ? (
-                  <Chip size="small" label={`${r.duration}`} />
+                  <Chip size="small" label={`${Math.round(r.duration/60)} Minutes`} />
                 ) : null}
               </Stack>
             </Paper>

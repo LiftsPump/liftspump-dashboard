@@ -294,22 +294,30 @@ export default function ExercisesPage() {
                   <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: 'repeat(3, 1fr)' }, gap: 1 }}>
                     {visible.map((e) => (
                       <Paper key={(e.id || e.name) + e.source} sx={{ p: 1.25, border: '1px solid', borderColor: e.source === 'custom' ? '#1AE080' : 'divider', bgcolor: 'background.paper' }}>
+                        <Stack direction="row" spacing={3} alignItems="center">
+                          {e?.images?.length ? (
+                            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                              <img 
+                                src={"../../images/"+e.images[0]} 
+                                alt="img" 
+                                style={{ width: 80, height: 60, objectFit: 'cover', borderRadius: 6 }}
+                              />
+                            </Box>
+                          ) : null}
+                          <Button size="small" variant="outlined" style={{ height: 30}} onClick={() => setOpenView(e)}>Details</Button>
+                          {e.source === 'custom' && (
+                            <>
+                              <Button size="small" variant="outlined" onClick={() => editExercise(e)}>Edit</Button>
+                              <IconButton size="small" color="error" onClick={() => removeExercise(e.id)}><DeleteOutlineIcon fontSize="inherit" /></IconButton>
+                            </>
+                          )}
+                        </Stack>
                         <Stack spacing={0.5}>
                           <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between">
                             <Typography variant="body1" fontWeight={700}>{e.name}</Typography>
-                            <Chip size="small" label={e.source === 'custom' ? 'Custom' : 'Builtin'} sx={{ bgcolor: e.source === 'custom' ? '#102a1e' : '#111', color: '#9ef6c5', border: e.source === 'custom' ? '1px solid #1AE080' : '1px solid #2a2a2a' }} />
                           </Stack>
                           <Typography variant="caption" sx={{ opacity: 0.8 }}>{[e.category, e.equipment].filter(Boolean).join(' • ')}</Typography>
                           <Typography variant="caption" sx={{ opacity: 0.8, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Muscles: {(e.primaryMuscles || []).join(', ')}</Typography>
-                          <Stack direction="row" spacing={1}>
-                            <Button size="small" variant="outlined" onClick={() => setOpenView(e)}>Details</Button>
-                            {e.source === 'custom' && (
-                              <>
-                                <Button size="small" variant="outlined" onClick={() => editExercise(e)}>Edit</Button>
-                                <IconButton size="small" color="error" onClick={() => removeExercise(e.id)}><DeleteOutlineIcon fontSize="inherit" /></IconButton>
-                              </>
-                            )}
-                          </Stack>
                         </Stack>
                       </Paper>
                     ))}
@@ -414,7 +422,7 @@ export default function ExercisesPage() {
             ) : null}
             {openView?.images?.length ? (
               <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                {openView.images.map((u, i) => (<img key={i} src={u} alt="img" style={{ width: 160, height: 120, objectFit: 'cover', borderRadius: 6 }} />))}
+                {openView.images.map((u, i) => (<img key={i} src={"../../images/"+u} alt="img" style={{ width: 160, height: 120, objectFit: 'cover', borderRadius: 6 }} />))}
               </Box>
             ) : null}
           </Stack>

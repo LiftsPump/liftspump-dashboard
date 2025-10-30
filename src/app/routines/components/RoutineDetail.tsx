@@ -88,12 +88,18 @@ export default function RoutineDetail({
           <Paper key={ex.id} sx={{ p: 1.5, bgcolor: "background.paper", border: "1px solid", borderColor: "divider" }}>
             <Stack spacing={1}>
               <Stack direction="row" spacing={1}>
-                <TextField
-                  value={ex.name ?? ""}
-                  onChange={(e) => onChangeExercise(ex.id, { name: e.target.value })}
-                  placeholder="Exercise name"
-                  size="small"
-                />
+                {ex?.eCode ? (
+                  <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                    <img 
+                      src={"../../images/"+ex.eCode+"/0.jpg"} 
+                      alt="" 
+                      style={{ width: 80, height: 50, objectFit: 'cover', borderRadius: 6 }}
+                    />
+                  </Box>
+                ) : null}
+                <Typography variant="subtitle1" sx={{ flexGrow: 1, alignSelf: "center" }}>
+                  {ex.name ?? "Untitled exercise"}
+                </Typography>
                 <IconButton onClick={() => onDeleteExercise(ex.id)} disabled={saving} aria-label="Delete exercise">
                   <DeleteIcon />
                 </IconButton>
@@ -104,7 +110,7 @@ export default function RoutineDetail({
                 placeholder="Notes"
                 size="small"
                 multiline
-                minRows={2}
+                minRows={1}
               />
 
               <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mt: 1 }}>
@@ -115,21 +121,23 @@ export default function RoutineDetail({
               <Stack spacing={1}>
                 {(setsByExercise[ex.id] ?? []).map((sr) => (
                   <Stack key={sr.id} direction="row" spacing={1} alignItems="center">
-                    <TextField
-                      type="number"
-                      size="small"
-                      label="Reps"
-                      value={sr.reps ?? 0}
-                      onChange={(e) => onChangeSet(ex.id, sr.id, { reps: Number(e.target.value) })}
-                    />
-                    <TextField
-                      type="number"
-                      size="small"
-                      label="Weight"
-                      value={sr.weight ?? 0}
-                      onChange={(e) => onChangeSet(ex.id, sr.id, { weight: Number(e.target.value) })}
-                    />
-                    {/* Removed PR and Done local-only flags for cleaner UX */}
+                    <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
+                      <TextField
+                        type="number"
+                        size="small"
+                        label="Reps"
+                        value={sr.reps ?? 0}
+                        onChange={(e) => onChangeSet(ex.id, sr.id, { reps: Number(e.target.value) })}
+                      />
+                      <TextField
+                        type="number"
+                        size="small"
+                        label="Weight"
+                        value={sr.weight ?? 0}
+                        onChange={(e) => onChangeSet(ex.id, sr.id, { weight: Number(e.target.value) })}
+                      />
+                    </Box>
+                    <Box sx={{ flexGrow: 1 }} />
                     <IconButton onClick={() => onDeleteSet(ex.id, sr.id)} disabled={saving} aria-label="Delete set">
                       <DeleteIcon />
                     </IconButton>

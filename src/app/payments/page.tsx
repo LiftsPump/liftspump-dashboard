@@ -394,9 +394,9 @@ export default function PaymentsSettings() {
               </Paper>
 
               <Paper sx={{ p: 2, border: "1px solid", borderColor: "divider", bgcolor: "background.paper" }}>
-                <Typography variant="h6" fontWeight={700} sx={{ mb: 1 }}>Checkout & invites</Typography>
+                <Typography variant="h6" fontWeight={700} sx={{ mb: 1 }}>Balance & issues</Typography>
                 <Typography variant="body2" sx={{ mb: 1 }}>
-                  To view your payments dashboard please click on Stripe Express.  On this page you can see your balance and withdraw money.  If you have any issues please email me at <a href="mailto:ahmed@liftspump.com">ahmed@liftspump.com</a>.
+                  To view your payments dashboard please click on Stripe Express.  On this page you can see your balance and withdraw money.  If you have any issues please email <a href="mailto:ahmed@liftspump.com">ahmed@liftspump.com</a>.
                 </Typography>
                 <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
                   <Button variant="outlined" onClick={handleStripePortal} startIcon={<PaymentsIcon />}>Open Stripe Express</Button>

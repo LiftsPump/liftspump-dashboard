@@ -198,7 +198,7 @@ export default function VideosPage() {
                 <Stack direction={{ xs: 'column', md: 'row' }} spacing={1} alignItems={{ xs: 'stretch', md: 'center' }} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1, p: 1 }}>
                   <Box sx={{ width: 160, height: 90, position: 'relative', borderRadius: 1, overflow: 'hidden', bgcolor: '#111' }}>
                     {thumb(v) && (
-                      <Image src={thumb(v)!} alt="thumb" fill style={{ objectFit: 'cover' }} />
+                      <Image src={thumb(v)!} alt="thumb" fill unoptimized style={{ objectFit: 'cover' }} />
                     )}
                   </Box>
                   <Box sx={{ flex: 1, minWidth: 0 }}>

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient as createServerSupabase } from '@/utils/supabase/server'
+import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { GoogleGenerativeAI } from '@google/generative-ai'
+import { createClient as createServerSupabase } from '@/utils/supabase/server'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -46,7 +47,11 @@ const buildBaselineSummary = (routines: any[] = []) => {
 }
 
 export async function GET(req: NextRequest) {
-  const supabase = createServerSupabase()
+  const userClient = await createServerSupabase()
+  const admin = createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
   const url = new URL(req.url)
   const targetUser = url.searchParams.get('user_id')
 
@@ -57,7 +62,7 @@ export async function GET(req: NextRequest) {
   const {
     data: { user },
     error: userError,
-  } = await supabase.auth.getUser()
+  } = await userClient.auth.getUser()
 
   if (userError) {
     return NextResponse.json({ error: userError.message }, { status: 500 })
@@ -67,7 +72,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const { data: trainerRows, error: trainerError } = await supabase
+  const { data: trainerRows, error: trainerError } = await userClient
     .from('trainer')
     .select('trainer_id, subs')
     .eq('creator_id', user.id)
@@ -87,7 +92,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  const { data: profileRow, error: profileError } = await supabase
+  const { data: profileRow, error: profileError } = await userClient
     .from('profile')
     .select('creator_id, first_name, last_name, email, username, height, weight, last_synced')
     .eq('creator_id', targetUser)
@@ -98,7 +103,29 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: profileError.message }, { status: 500 })
   }
 
-  const { data: routineRows, error: routineError } = await supabase
+  const { data: rateRows, error: rateError } = await admin
+    .from('ratelimits')
+    .select('creator_id, summary, date')
+    .eq('creator_id', targetUser)
+    .order('date', { ascending: false })
+
+  if (rateError && rateError.code !== 'PGRST116') {
+    return NextResponse.json({ error: rateError.message }, { status: 500 })
+  }
+
+  // Use most recent row if available
+  const latest = Array.isArray(rateRows) && rateRows.length ? rateRows[0] : null
+
+  // If there is a recent summary (within past 24h), return it and skip generation.
+  const nowMs = Date.now()
+  const lastMs = latest?.date ? new Date(latest.date as string).getTime() : 0
+  const isFresh = Number.isFinite(lastMs) && lastMs > 0 && nowMs - lastMs <= 24 * 60 * 60 * 1000
+
+  if (isFresh && latest?.summary) {
+    return NextResponse.json({ summary: latest.summary, cached: true })
+  }
+
+  const { data: routineRows, error: routineError } = await userClient
     .from('routines')
     .select('id, name, type, text, picture, days, weekly, date, duration')
     .eq('creator_id', targetUser)
@@ -219,6 +246,23 @@ export async function GET(req: NextRequest) {
       })
     }
 
+    // Reset existing rows for this user and save the new summary snapshot.
+    const { error: upsertErr } = await admin
+      .from('ratelimits')
+      .upsert(
+        {
+          creator_id: targetUser,
+          date: new Date().toISOString(),
+          voiceminutes: 0,
+          assitanttokens: 0, // match current DB column name
+          summary: combined,
+        },
+        { onConflict: 'creator_id' }
+      )
+      .select('creator_id')
+    if (upsertErr) {
+      console.error('ratelimits upsert failed', upsertErr)
+    }
     return NextResponse.json({ summary: combined })
   } catch (err: any) {
     console.error('Gemini user insights failed', err)

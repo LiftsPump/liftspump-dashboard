@@ -98,7 +98,7 @@ export default function UsersSidebar({
                   <Stack direction="row" spacing={1} sx={{ mt: 0.5, flexWrap: 'wrap' }}>
                     {subtitle ? <Typography variant="body2" color="text.secondary" noWrap>{subtitle}</Typography> : null}
                     {p.last_synced ? (
-                      <Chip size="small" icon={<TodayIcon />} label={`Synced ${new Date(p.last_synced).toLocaleDateString()}`} variant="outlined" color="primary" sx={{ borderColor: 'divider' }} />
+                      <Chip size="small" icon={<TodayIcon />} label={`Last logged in: ${new Date(p.last_synced).toLocaleDateString()}`} variant="outlined" color="primary" sx={{ borderColor: 'divider' }} />
                     ) : null}
                   </Stack>
                 }

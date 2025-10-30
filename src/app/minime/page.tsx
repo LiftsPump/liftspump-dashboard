@@ -471,7 +471,7 @@ export default function MiniMePage() {
                 size="small"
                 color="primary"
                 icon={<AutoAwesomeIcon fontSize="small" />}
-                label="Powered by Gemini + Supabase"
+                label="Powered by Liftspump AI"
               />
               <Box sx={{ flex: { xs: "unset", sm: 1 } }} />
               <Button
@@ -484,9 +484,9 @@ export default function MiniMePage() {
               </Button>
             </Stack>
             <Typography variant="body2" sx={{ color: "#b9c0cc" }}>
-              Drop in any public YouTube link. We&apos;ll pull the transcript,
-              ask Gemini for a persona JSON, and write it back to your trainer
-              profile so the agent can stay on brand.
+              Drop in any Youtube link and we will generate
+              a mini voice bot for your users to interact with.
+              It will copy your mannerisms + style.
             </Typography>
 
             <Box
