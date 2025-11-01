@@ -2,15 +2,14 @@
 import Header from "../../components/Header";
 import styles from "../page.module.css";
 import Navigation from "../../components/Navigation";
-import { Box, Paper, Stack, Typography, Button, Chip, TextField, Avatar, Snackbar, Grow } from "@mui/material";
-import { useEffect, useMemo, useState } from "react";
+import { Box, Paper, Stack, Typography, Button, Chip, TextField, Snackbar, Grow } from "@mui/material";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSupabaseClient, useSession, useSessionContext } from "@supabase/auth-helpers-react";
 import LinkIcon from "@mui/icons-material/Link";
 import PersonAddIcon from "@mui/icons-material/PersonAdd";
-import PhotoCameraIcon from "@mui/icons-material/PhotoCamera";
-import PlaylistAddIcon from "@mui/icons-material/PlaylistAdd";
+import PaymentsIcon from "@mui/icons-material/Payments";
 import useDocumentTitle from "../../hooks/useDocumentTitle";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 export default function OnboardingPage() {
   useDocumentTitle("Onboarding | Liftspump");
@@ -18,12 +17,20 @@ export default function OnboardingPage() {
   const session = useSession();
   const supabase = useSupabaseClient();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const stripeStatus = searchParams?.get('stripe');
 
   const [trainerId, setTrainerId] = useState<string | null>(null);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
-  const [connectId, setConnectId] = useState<string>("");
+  const [displayName, setDisplayName] = useState<string>("");
+  const [displayNameInput, setDisplayNameInput] = useState<string>("");
+  const [connectAccountId, setConnectAccountId] = useState<string>("");
+  const [connectInput, setConnectInput] = useState<string>("");
   const [saving, setSaving] = useState(false);
+  const [savingName, setSavingName] = useState(false);
+  const [savingConnect, setSavingConnect] = useState(false);
   const [snack, setSnack] = useState<string | null>(null);
+  const redirectingRef = useRef(false);
 
   useEffect(() => {
     if (authLoading) return;
@@ -42,17 +49,22 @@ export default function OnboardingPage() {
       if (!uid) return;
       const { data } = await supabase
         .from('trainer')
-        .select('trainer_id, connect_account_id')
+        .select('trainer_id, connect_account_id, display_name')
         .eq('creator_id', uid)
         .limit(1);
       if (!alive) return;
       const tId = (data?.[0]?.trainer_id as string) || null;
       setTrainerId(tId);
-      setConnectId((data?.[0]?.connect_account_id as string) || "");
+      const storedConnect = (data?.[0]?.connect_account_id as string) || "";
+      setConnectAccountId(storedConnect);
+      setConnectInput(storedConnect);
+      const storedName = (data?.[0]?.display_name as string) || "";
+      setDisplayName(storedName);
+      setDisplayNameInput(storedName);
     };
     load();
     return () => { alive = false };
-  }, [authLoading, session?.user?.id, supabase]);
+  }, [authLoading, session?.user?.id, supabase, stripeStatus]);
 
   const createTrainer = async () => {
     const uid = session?.user?.id || null;
@@ -119,12 +131,31 @@ export default function OnboardingPage() {
     } finally { setSaving(false); }
   };
 
+  const saveDisplayName = async () => {
+    if (!trainerId) { setSnack('Create trainer first'); return; }
+    const value = displayNameInput.trim();
+    setSavingName(true);
+    const { error } = await supabase.from('trainer').update({ display_name: value || null }).eq('trainer_id', trainerId);
+    setSavingName(false);
+    if (error) {
+      setSnack(error.message);
+      return;
+    }
+    setDisplayName(value);
+    setSnack('Trainer name saved');
+  };
+
   const saveConnect = async () => {
     if (!trainerId) { setSnack('Create trainer first'); return; }
-    setSaving(true);
-    const { error } = await supabase.from('trainer').update({ connect_account_id: connectId || null }).eq('trainer_id', trainerId);
-    setSaving(false);
+    const value = connectInput.trim();
+    setSavingConnect(true);
+    const { error } = await supabase.from('trainer').update({ connect_account_id: value || null }).eq('trainer_id', trainerId);
+    setSavingConnect(false);
     setSnack(error ? error.message : 'Connect account saved');
+    if (!error) {
+      setConnectAccountId(value);
+      setConnectInput(value);
+    }
   };
 
   const inviteUrl = useMemo(() => {
@@ -133,6 +164,46 @@ export default function OnboardingPage() {
   }, [trainerId]);
 
   const copyInvite = async () => { try { await navigator.clipboard?.writeText(inviteUrl); setSnack('Invite link copied'); } catch {} };
+
+  const startStripeConnect = () => {
+    if (!trainerId) { setSnack('Create trainer first'); return; }
+    if (typeof window === 'undefined') return;
+    const origin = window.location.origin;
+    const url = new URL('/api/stripe/portal', origin);
+    url.searchParams.set('mode', 'express');
+    url.searchParams.set('trainer_id', trainerId);
+    url.searchParams.set('return_url', `${origin}/onboarding?stripe=return`);
+    url.searchParams.set('refresh_url', `${origin}/onboarding?stripe=refresh`);
+    if (connectAccountId) {
+      url.searchParams.set('connect_account_id', connectAccountId);
+    }
+    window.location.href = url.toString();
+  };
+
+  useEffect(() => {
+    if (!stripeStatus) return;
+    if (stripeStatus === 'return') setSnack('Stripe Connect updated');
+    if (stripeStatus === 'refresh') setSnack('Stripe onboarding cancelled');
+    if (typeof window !== 'undefined') {
+      const nextUrl = new URL(window.location.href);
+      nextUrl.searchParams.delete('stripe');
+      const searchString = nextUrl.searchParams.toString();
+      const target = `${nextUrl.pathname}${searchString ? `?${searchString}` : ''}`;
+      router.replace(target, { scroll: false });
+    }
+  }, [stripeStatus]);
+
+  useEffect(() => {
+    if (redirectingRef.current) return;
+    if (authLoading) return;
+    if (!session?.user?.id) return;
+    const hasTrainer = !!trainerId;
+    const hasName = !!displayName.trim();
+    const hasConnect = !!connectAccountId;
+    if (hasTrainer && hasName && hasConnect) {
+      redirectingRef.current = true;
+    }
+  }, [authLoading, session?.user?.id, trainerId, displayName, connectAccountId, router]);
 
   return (
     <div className={styles.page}>
@@ -167,30 +238,54 @@ export default function OnboardingPage() {
             <Grow in timeout={250}><Paper sx={{ p: 2 }}>
               <Typography variant="subtitle1" fontWeight={700}>Step 1 — Create trainer</Typography>
               <Typography variant="body2" sx={{ mb: 1, opacity: 0.85 }}>Create a trainer profile linked to your account.</Typography>
-              <Button onClick={createTrainer} disabled={!!trainerId} variant="outlined" size="small">{trainerId ? 'Already created' : 'Create trainer'}</Button>
+              <Button onClick={createTrainer} disabled={!!trainerId} size="small">{trainerId ? 'Already created' : 'Create trainer'}</Button>
             </Paper></Grow>
 
             <Grow in timeout={300}><Paper sx={{ p: 2 }}>
-              <Typography variant="subtitle1" fontWeight={700}>Step 2 — Upload photo</Typography>
-              <Stack direction={{ xs: "column", sm: "row" }} spacing={2} alignItems={{ xs: "stretch", sm: "center" }} sx={{ mt: 1 }}>
-                <Avatar src={photoUrl ?? undefined} sx={{ width: 64, height: 64 }} />
-                <label>
-                  <input type="file" accept="image/*" hidden onChange={uploadPhoto} />
-                  <Button component="span" startIcon={<PhotoCameraIcon />} disabled={!trainerId || saving} variant="outlined" size="small">Upload photo</Button>
-                </label>
+              <Typography variant="subtitle1" fontWeight={700}>Step 2 — Trainer name</Typography>
+              <Typography variant="body2" sx={{ mb: 1, opacity: 0.85 }}>Set the name shown to members when they join and in emails.</Typography>
+              <Stack direction={{ xs: 'column', md: 'row' }} spacing={1}>
+                <TextField
+                  label="Display name"
+                  placeholder="e.g. Coach Jamie"
+                  value={displayNameInput}
+                  onChange={(e) => setDisplayNameInput(e.target.value)}
+                  size="small"
+                  fullWidth
+                  disabled={!trainerId}
+                />
+                <Button
+                  onClick={saveDisplayName}
+                  disabled={!trainerId || savingName || displayNameInput.trim() === displayName}
+                  variant="contained"
+                  size="small"
+                >
+                  {savingName ? 'Saving…' : displayName ? 'Update name' : 'Save name'}
+                </Button>
               </Stack>
             </Paper></Grow>
 
             <Grow in timeout={350}><Paper sx={{ p: 2 }}>
-              <Typography variant="subtitle1" fontWeight={700}>Step 3 — Seed tiers</Typography>
-              <Typography variant="body2" sx={{ mb: 1, opacity: 0.85 }}>Create Basic, Plus, and Pro tiers you can edit later in Payments.</Typography>
-              <Button onClick={seedTiers} disabled={!trainerId || saving} startIcon={<PlaylistAddIcon />} variant="outlined" size="small">Seed defaults</Button>
+              <Typography variant="subtitle1" fontWeight={700}>Step 3 — Stripe Connect</Typography>
+              <Typography variant="body2" sx={{ mb: 1, opacity: 0.85 }}>Link your Stripe Express account so you can accept payments and payouts.</Typography>
+              <Stack spacing={1.5}>
+                <Stack direction={{ xs: 'column', md: 'row' }} spacing={1} alignItems={{ xs: 'flex-start', md: 'center' }}>
+                  {!connectAccountId && (<Button
+                    onClick={startStripeConnect}
+                    disabled={!trainerId}
+                    variant="contained"
+                    size="small"
+                    startIcon={<PaymentsIcon />}
+                  >
+                    Start Stripe onboarding
+                  </Button>)}
+                  {connectAccountId && <Chip color="success" label="Stripe connected" size="small" />}
+                </Stack>
+              </Stack>
             </Paper></Grow>
 
-            {/* Stripe Connect intentionally omitted per requirements */}
-
             <Grow in timeout={400}><Paper sx={{ p: 2 }}>
-              <Typography variant="subtitle1" fontWeight={700}>Step 5 — Invite</Typography>
+              <Typography variant="subtitle1" fontWeight={700}>Step 4 — Invite</Typography>
               <Typography variant="body2" sx={{ mb: 1, opacity: 0.85 }}>Share the link below to invite members. They will sign in, subscribe, and be linked to your trainer profile.</Typography>
               <Stack direction={{ xs: 'column', md: 'row' }} spacing={1} alignItems={{ xs: 'stretch', md: 'center' }}>
                 <TextField value={inviteUrl} size="small" fullWidth disabled />

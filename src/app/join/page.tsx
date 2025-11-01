@@ -39,6 +39,7 @@ function JoinInner() {
   const [trainerBio, setTrainerBio] = useState<string | null>(null);
   const [finalizeStatus, setFinalizeStatus] = useState<'idle' | 'pending' | 'success' | 'error'>('idle');
   const [finalizeMessage, setFinalizeMessage] = useState<string | null>(null);
+  const [pendingCheckoutUrl, setPendingCheckoutUrl] = useState<string | null>(null);
   const selectedTier = useMemo(() => tiers.find(t => t.key === pick) || null, [tiers, pick]);
   const hasFinalized = useRef(false);
 
@@ -155,15 +156,29 @@ function JoinInner() {
     const base = typeof window !== 'undefined' ? window.location.origin : '';
     const returnUrl = `${base}/join?trainer_id=${encodeURIComponent(trainerId)}`;
     // Build checkout URL (includes user_id only when logged in)
-    const checkoutUrl = `/api/checkout?trainer_id=${encodeURIComponent(trainerId)}&tier=${encodeURIComponent(pick)}&return_url=${encodeURIComponent(returnUrl)}` + (session?.user?.id ? `&user_id=${encodeURIComponent(session.user.id)}` : '');
+    const checkoutUrl =
+      `/api/checkout?trainer_id=${encodeURIComponent(trainerId)}&tier=${encodeURIComponent(pick)}&return_url=${encodeURIComponent(returnUrl)}` +
+      (session?.user?.id ? `&user_id=${encodeURIComponent(session.user.id)}` : '');
+
     if (!session?.user) {
       // First go to login, then bounce back to this join page with start=1 so we can regenerate checkout with user_id
       const backToJoin = `/join?trainer_id=${encodeURIComponent(trainerId)}&tier=${encodeURIComponent(pick)}&start=1`;
       router.push(`/login?next=${encodeURIComponent(backToJoin)}`);
       return;
     }
-    window.location.href = checkoutUrl;
+
+    if (already) return;
+
+    // Defer navigation to a top-level effect
+    setPendingCheckoutUrl(checkoutUrl);
   };
+
+  useEffect(() => {
+    if (pendingCheckoutUrl && !already && !loading) {
+      window.location.href = pendingCheckoutUrl;
+      setPendingCheckoutUrl(null);
+    }
+  }, [pendingCheckoutUrl, already, loading]);
 
   // If we arrived after login with tier param and start=1, auto start checkout with user_id attached
   useEffect(() => {

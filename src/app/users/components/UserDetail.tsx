@@ -14,6 +14,8 @@ export default function UserDetail({
   onChangeRepeatChoice,
   onPickRoutine,
   onAssignRoutine,
+  assignmentDate,
+  onChangeAssignmentDate,
   assigning,
   canAssign,
   assignedRoutines,
@@ -30,6 +32,8 @@ export default function UserDetail({
   onChangeRepeatChoice: (value: string) => void;
   onPickRoutine: (r: any | null) => void;
   onAssignRoutine: () => void;
+  assignmentDate: string;
+  onChangeAssignmentDate: (value: string) => void;
   assigning: boolean;
   canAssign: boolean;
   assignedRoutines: any[];
@@ -222,12 +226,22 @@ export default function UserDetail({
             disabled={assigning || !trainerRoutines.length}
           />
           <TextField
+            label="Start date"
+            type="date"
+            size="small"
+            value={assignmentDate}
+            onChange={(event) => onChangeAssignmentDate(event.target.value)}
+            InputLabelProps={{ shrink: true }}
+            sx={{ minWidth: { xs: "100%", md: 100 } }}
+            disabled={assigning}
+          />
+          <TextField
             select
             size="small"
             label="Repeat"
             value={repeatChoice}
             onChange={(event) => onChangeRepeatChoice(event.target.value)}
-            sx={{ minWidth: { xs: "100%", md: 180 } }}
+            sx={{ minWidth: { xs: "100%", md: 100 } }}
             disabled={assigning}
           >
             {repeatOptions.map((option) => (
@@ -236,7 +250,7 @@ export default function UserDetail({
               </MenuItem>
             ))}
           </TextField>
-          <Button onClick={onAssignRoutine} disabled={assigning || !canAssign} variant="contained">Assign</Button>
+          <Button onClick={onAssignRoutine} disabled={assigning || !canAssign}>Assign</Button>
         </Stack>
 
         <Divider sx={{ my: 1.5 }} />

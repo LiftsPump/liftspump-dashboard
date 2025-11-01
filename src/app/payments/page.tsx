@@ -297,7 +297,6 @@ export default function PaymentsSettings() {
             <Chip label={`${totalActive} active tier${totalActive === 1 ? "" : "s"}`} size="small" />
             <Box sx={{ flex: { xs: "unset", sm: 1 } }} />
             <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", justifyContent: { xs: "flex-start", sm: "flex-end" } }}>
-              <Button onClick={handleStripePortal} startIcon={<PaymentsIcon />} variant="outlined" size="small">Stripe Express</Button>
               <Button onClick={handleSave} startIcon={<SaveIcon />} disabled={saving} variant="outlined" size="small">
                 {saving ? "Saving…" : "Save"}
               </Button>

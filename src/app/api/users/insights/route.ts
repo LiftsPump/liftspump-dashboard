@@ -92,7 +92,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  const { data: profileRow, error: profileError } = await userClient
+  const { data: profileRow, error: profileError } = await admin
     .from('profile')
     .select('creator_id, first_name, last_name, email, username, height, weight, last_synced')
     .eq('creator_id', targetUser)
@@ -125,7 +125,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ summary: latest.summary, cached: true })
   }
 
-  const { data: routineRows, error: routineError } = await userClient
+  const { data: routineRows, error: routineError } = await admin
     .from('routines')
     .select('id, name, type, text, picture, days, weekly, date, duration')
     .eq('creator_id', targetUser)

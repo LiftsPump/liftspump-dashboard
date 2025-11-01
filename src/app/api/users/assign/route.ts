@@ -1,13 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient as createServerSupabase } from "@/utils/supabase/server";
+import { createClient as createAdminClient } from '@supabase/supabase-js'
 
 export async function POST(req: NextRequest) {
-  const supabase = createServerSupabase();
+  const admin = createAdminClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
   const body = await req.json().catch(() => ({}));
   const targetUserId = String(body?.target_user_id || "").trim();
   const trainerRoutineId = String(body?.trainer_routine_id || "").trim();
   const rawRepeatDays = body?.repeat_days;
   const rawRepeatWeekly = body?.repeat_weekly;
+  const rawAssignedDate = typeof body?.assigned_date === 'string' ? body.assigned_date : null;
 
   if (!targetUserId || !trainerRoutineId) {
     return NextResponse.json({ error: "Missing target user or routine" }, { status: 400 });
@@ -16,7 +20,7 @@ export async function POST(req: NextRequest) {
   const {
     data: { user },
     error: userError,
-  } = await supabase.auth.getUser();
+  } = await admin.auth.getUser();
 
   if (userError) {
     return NextResponse.json({ error: userError.message }, { status: 500 });
@@ -26,7 +30,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { data: trainerRows, error: trainerError } = await supabase
+  const { data: trainerRows, error: trainerError } = await admin
     .from("trainer")
     .select("subs")
     .eq("creator_id", user.id)
@@ -44,7 +48,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const { data: trainerRoutine, error: trainerRoutineError } = await supabase
+  const { data: trainerRoutine, error: trainerRoutineError } = await admin
     .from("routines")
     .select("id, name, type, text, picture, days, weekly, date, duration")
     .eq("id", trainerRoutineId)
@@ -85,7 +89,17 @@ export async function POST(req: NextRequest) {
       }
       return trainerRoutine?.weekly ?? null;
     })(),
-    date: new Date().toISOString(),
+    date: (() => {
+      if (rawAssignedDate) {
+        try {
+          const parsed = new Date(rawAssignedDate);
+          if (!Number.isNaN(parsed.valueOf())) {
+            return parsed.toISOString();
+          }
+        } catch {}
+      }
+      return new Date().toISOString();
+    })(),
     duration: trainerRoutine?.duration ?? null,
     creator_id: targetUserId,
   };
@@ -97,7 +111,7 @@ export async function POST(req: NextRequest) {
     insertPayload.days = null;
   }
 
-  const { data: newRoutine, error: insertError } = await supabase
+  const { data: newRoutine, error: insertError } = await admin
     .from("routines")
     .insert(insertPayload)
     .select("id, name, type, text, picture, days, weekly, date, duration, creator_id")
@@ -110,7 +124,7 @@ export async function POST(req: NextRequest) {
   let copiedExercises = 0;
   let copiedSets = 0;
 
-  const { data: srcExercises, error: exercisesError } = await supabase
+  const { data: srcExercises, error: exercisesError } = await admin
     .from("exercises")
     .select("id, name, text, eCode")
     .eq("routine_id", trainerRoutineId)
@@ -122,7 +136,7 @@ export async function POST(req: NextRequest) {
 
   if (srcExercises && srcExercises.length) {
     for (const exercise of srcExercises as any[]) {
-      const { data: insertedExercise, error: insertExerciseError } = await supabase
+      const { data: insertedExercise, error: insertExerciseError } = await admin
         .from("exercises")
         .insert({
           name: exercise.name,
@@ -140,7 +154,7 @@ export async function POST(req: NextRequest) {
 
       copiedExercises += 1;
 
-      const { data: srcSets, error: setsError } = await supabase
+      const { data: srcSets, error: setsError } = await admin
         .from("sets")
         .select("reps, weight, completed, pr")
         .eq("exercise_id", exercise.id)
@@ -160,7 +174,7 @@ export async function POST(req: NextRequest) {
           creator_id: targetUserId,
         }));
 
-        const { error: insertSetsError } = await supabase.from("sets").insert(rows);
+        const { error: insertSetsError } = await admin.from("sets").insert(rows);
 
         if (insertSetsError) {
           return NextResponse.json({ error: insertSetsError.message }, { status: 500 });

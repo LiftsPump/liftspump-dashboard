@@ -474,14 +474,6 @@ export default function MiniMePage() {
                 label="Powered by Liftspump AI"
               />
               <Box sx={{ flex: { xs: "unset", sm: 1 } }} />
-              <Button
-                variant="text"
-                size="small"
-                onClick={() => setVideoUrl(exampleVideo)}
-                startIcon={<UploadIcon />}
-              >
-                Use sample
-              </Button>
             </Stack>
             <Typography variant="body2" sx={{ color: "#b9c0cc" }}>
               Drop in any Youtube link and we will generate

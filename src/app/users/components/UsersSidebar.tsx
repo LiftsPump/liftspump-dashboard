@@ -71,7 +71,7 @@ export default function UsersSidebar({
               ),
             }}
           />
-          <Button onClick={inviteUser} variant="outlined" size="small" startIcon={<PersonAddAlt1Icon />} disabled={!trainerId}>
+          <Button onClick={inviteUser} size="small" startIcon={<PersonAddAlt1Icon />} disabled={!trainerId}>
             Invite
           </Button>
         </Stack>

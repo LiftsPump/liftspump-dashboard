@@ -192,7 +192,7 @@ export default function RootLayout({
               .eq('active', true);
             tiersCount = typeof count === 'number' ? count : 0;
           }
-          const should = !!tId && (tiersCount === 0)
+          const should = !tId
           const isOnboarding = pathname === '/onboarding'
           const isPublic = pathname === '/join' || pathname === '/login'
           if (should && !isOnboarding && !isPublic) {

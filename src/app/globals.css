@@ -6,16 +6,6 @@
   --glass-shadow: 0 10px 30px rgba(0,0,0,0.35);
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    --background: #f7f7f8;
-    --foreground: #0f0f10;
-    --glass-bg: rgba(0,0,0,0.04);
-    --glass-border: rgba(0,0,0,0.08);
-    --glass-shadow: 0 10px 24px rgba(0,0,0,0.12);
-  }
-}
-
 html,
 body {
   max-width: 100vw;
@@ -52,8 +42,6 @@ a {
   text-decoration: none;
 }
 
-@media (prefers-color-scheme: dark) {
-  html {
+html {
     color-scheme: dark;
   }
-}

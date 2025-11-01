@@ -104,8 +104,8 @@ export async function GET(req: NextRequest) {
   }
 
   const origin = getOrigin(req.headers as unknown as Headers)
-  const success = returnUrl || `${origin}/users`
-  const cancel = `${origin}/payments`
+  const success = returnUrl || `https://liftspump.com`
+  const cancel = returnUrl || `https://liftspump.com`
 
   const successUrl = (() => {
     try {

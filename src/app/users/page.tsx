@@ -5,6 +5,8 @@ import Navigation from "../../components/Navigation";
 import {
   Box,
 } from "@mui/material";
+import Snackbar from "@mui/material/Snackbar";
+import Alert from "@mui/material/Alert";
 // Global theme is provided in RootLayout
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -72,6 +74,14 @@ export default function Users() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
+  const [lastSyncedFilter, setLastSyncedFilter] = useState("");
+  const [assignmentDate, setAssignmentDate] = useState(() => {
+    try {
+      return new Date().toISOString().slice(0, 10);
+    } catch {
+      return "";
+    }
+  });
 
   // data
   const [subs, setSubs] = useState<string[]>([]);
@@ -90,6 +100,12 @@ export default function Users() {
   const [trainerId, setTrainerId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [repeatChoice, setRepeatChoice] = useState<string>('none');
+  const [snack, setSnack] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
+    open: false,
+    message: '',
+    severity: 'success',
+  });
+  const handleSnackClose = () => setSnack((prev) => ({ ...prev, open: false }));
 
   // Supabase Auth Helpers
   const session = useSession();
@@ -248,14 +264,24 @@ export default function Users() {
   // ---- filtered list ----
   const filteredProfiles = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return profiles;
-    return profiles.filter((p) =>
-      (p.first_name ?? "").toLowerCase().includes(q) ||
-      (p.last_name ?? "").toLowerCase().includes(q) ||
-      (p.username ?? "").toLowerCase().includes(q) ||
-      (p.email ?? "").toLowerCase().includes(q)
-    );
-  }, [profiles, query]);
+    return profiles.filter((p) => {
+      const matchesQuery =
+        !q ||
+        (p.first_name ?? "").toLowerCase().includes(q) ||
+        (p.last_name ?? "").toLowerCase().includes(q) ||
+        (p.username ?? "").toLowerCase().includes(q) ||
+        (p.email ?? "").toLowerCase().includes(q);
+      if (!matchesQuery) return false;
+      if (!lastSyncedFilter) return true;
+      if (!p.last_synced) return false;
+      try {
+        const iso = new Date(p.last_synced).toISOString().slice(0, 10);
+        return iso === lastSyncedFilter;
+      } catch {
+        return false;
+      }
+    });
+  }, [profiles, query, lastSyncedFilter]);
 
   // ---- actions ----
   const inviteUser = async () => {
@@ -264,9 +290,10 @@ export default function Users() {
     const inviteUrl = `${base}/join?trainer_id=${encodeURIComponent(trainerId)}`;
     try {
       await navigator.clipboard?.writeText(inviteUrl);
-    } catch {}
-    // Open the public join page where the user can pick a tier, login, and subscribe
-    window.open(inviteUrl, "_blank", "noopener,noreferrer");
+      setSnack({ open: true, message: 'Invite link copied', severity: 'success' });
+    } catch (e) {
+      setSnack({ open: true, message: 'Failed to copy invite link', severity: 'error' });
+    }
   };
   const saveUserNotes = async (text: string) => {
     // optional: store a trainer note into profile.text if exists
@@ -278,6 +305,14 @@ export default function Users() {
     if (!routinePick || !selectedUser) return;
     setAssigning(true);
     try {
+      let assignedDatePayload: string | undefined;
+      if (assignmentDate) {
+        try {
+          assignedDatePayload = new Date(assignmentDate).toISOString();
+        } catch {
+          assignedDatePayload = undefined;
+        }
+      }
       const repeatPayload = (() => {
         switch (repeatChoice) {
           case 'daily':
@@ -302,6 +337,7 @@ export default function Users() {
         body: JSON.stringify({
           target_user_id: selectedUser,
           trainer_routine_id: routinePick.id,
+          assigned_date: assignedDatePayload,
           ...repeatPayload,
         }),
       });
@@ -320,6 +356,11 @@ export default function Users() {
         setSummary(basicSummarize(next));
         return next;
       });
+      try {
+        setAssignmentDate(new Date().toISOString().slice(0, 10));
+      } catch {
+        setAssignmentDate("");
+      }
     } catch (e: any) {
       setError(e.message ?? String(e));
     } finally {
@@ -442,6 +483,8 @@ export default function Users() {
                 onChangeRepeatChoice={setRepeatChoice}
                 onPickRoutine={(val) => setRoutinePick(val as any)}
                 onAssignRoutine={assignRoutineToUser}
+                assignmentDate={assignmentDate}
+                onChangeAssignmentDate={setAssignmentDate}
                 assigning={assigning}
                 canAssign={Boolean(routinePick)}
                 assignedRoutines={assignedRoutines as any}
@@ -458,6 +501,16 @@ export default function Users() {
           </div>
         </main>
         <footer className={styles.footer}></footer>
+        <Snackbar
+          open={snack.open}
+          autoHideDuration={2000}
+          onClose={handleSnackClose}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        >
+          <Alert onClose={handleSnackClose} severity={snack.severity} sx={{ width: '100%' }}>
+            {snack.message}
+          </Alert>
+        </Snackbar>
       </div>
   );
 }

@@ -1,10 +1,10 @@
 .header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 1rem;
   padding: 1rem 2rem;
-  background: var(--glass-bg);
+  background: var(--background);
   color: #1AE080;
   border-bottom: 1px solid var(--glass-border);
   backdrop-filter: blur(10px);
