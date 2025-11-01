@@ -3,7 +3,7 @@ import Header from "../../components/Header";
 import styles from "../page.module.css";
 import Navigation from "../../components/Navigation";
 import { Box, Paper, Stack, Typography, Button, Chip, TextField, Snackbar, Grow } from "@mui/material";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, Suspense } from "react";
 import { useSupabaseClient, useSession, useSessionContext } from "@supabase/auth-helpers-react";
 import LinkIcon from "@mui/icons-material/Link";
 import PersonAddIcon from "@mui/icons-material/PersonAdd";
@@ -11,7 +11,7 @@ import PaymentsIcon from "@mui/icons-material/Payments";
 import useDocumentTitle from "../../hooks/useDocumentTitle";
 import { useRouter, useSearchParams } from "next/navigation";
 
-export default function OnboardingPage() {
+function OnboardingInner() {
   useDocumentTitle("Onboarding | Liftspump");
   const { isLoading: authLoading } = useSessionContext();
   const session = useSession();
@@ -298,5 +298,13 @@ export default function OnboardingPage() {
       <footer className={styles.footer}></footer>
       <Snackbar open={!!snack} autoHideDuration={2500} onClose={() => setSnack(null)} message={snack ?? ''} />
     </div>
+  );
+}
+
+export default function OnboardingPage() {
+  return (
+    <Suspense fallback={null}>
+      <OnboardingInner />
+    </Suspense>
   );
 }
