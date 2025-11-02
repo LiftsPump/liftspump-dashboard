@@ -1,11 +1,19 @@
+export const runtime = "nodejs";
+
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-const admin = createClient(supabaseUrl, serviceKey);
-
 export async function POST(req: Request) {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!supabaseUrl || !serviceKey) {
+    return NextResponse.json(
+      { error: "Server misconfigured: missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY" },
+      { status: 500 }
+    );
+  }
+  const admin = createClient(supabaseUrl, serviceKey);
+
   const { trainer_id, member_email, member_id } = await req.json();
 
   if (!trainer_id || (!member_email && !member_id)) {
