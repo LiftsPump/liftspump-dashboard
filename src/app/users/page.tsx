@@ -512,7 +512,7 @@ export default function Users() {
           open={snack.open}
           autoHideDuration={2000}
           onClose={handleSnackClose}
-          anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
         >
           <Alert onClose={handleSnackClose} severity={snack.severity} sx={{ width: '100%' }}>
             {snack.message}

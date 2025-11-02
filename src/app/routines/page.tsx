@@ -260,12 +260,10 @@ export default function Routines() {
   
 
   const saveSet = async (sr: SetRow) => {
-    setSaving(true);
     await supabase
       .from("sets")
       .update({ reps: sr.reps, weight: sr.weight, completed: sr.completed, pr: sr.pr })
       .eq("id", sr.id);
-    setSaving(false);
   };
 
   
@@ -396,14 +394,37 @@ export default function Routines() {
                     onUpdateRoutine={(patch: Partial<any>) => { if (selected) { setRoutines((prev) => prev.map(r => r.id === selected.id ? { ...r, ...patch } : r)); } }}
                     onSaveRoutine={async (patch: Partial<any>) => { if (!selected) return; setSaving(true); await supabase.from('routines').update(patch).eq('id', selected.id); setSaving(false); }}
                     exercises={exercises as any}
-                    onChangeExercise={(id, patch) => setExercises((prev) => prev.map(p => p.id === id ? { ...p, ...patch } : p))}
+                    onChangeExercise={(id, patch) => {
+                      // Update local state
+                      setExercises((prev) => {
+                        const next = prev.map((p) => (p.id === id ? { ...p, ...patch } : p));
+                        // Persist change
+                        const updated = next.find((p) => p.id === id);
+                        if (updated) {
+                          // cast is safe since our state holds `Exercise` objects
+                          saveExercise(updated as Exercise);
+                        }
+                        return next;
+                      });
+                    }}
                     onAddExercise={addExercise}
                     onAddFromCatalog={addExerciseFromCatalog as any}
                     onSaveExercise={saveExercise as any}
                     onDeleteExercise={deleteExercise}
                     setsByExercise={setsByExercise as any}
                     onAddSet={addSet}
-                    onChangeSet={(exerciseId, setId, patch) => setSetsByExercise((prev) => ({ ...prev, [exerciseId]: (prev[exerciseId] ?? []).map(s => s.id === setId ? { ...s, ...patch } : s) }))}
+                    onChangeSet={(exerciseId, setId, patch) => {
+                      setSetsByExercise((prev) => {
+                        const nextList = (prev[exerciseId] ?? []).map((s) =>
+                          s.id === setId ? { ...s, ...patch } : s
+                        );
+                        const updated = nextList.find((s) => s.id === setId);
+                        if (updated) {
+                          saveSet(updated as SetRow);
+                        }
+                        return { ...prev, [exerciseId]: nextList };
+                      });
+                    }}
                     onSaveSet={saveSet as any}
                     onDeleteSet={deleteSet}
                     catalogOptions={catalogOptions as any}

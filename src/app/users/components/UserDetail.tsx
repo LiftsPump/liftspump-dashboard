@@ -212,11 +212,12 @@ export default function UserDetail({
           direction={{ xs: "column", md: "row" }}
           spacing={1}
           alignItems={{ xs: "stretch", md: "center" }}
+          justifyContent="space-around"
           sx={{ mb: 2, gap: { xs: 1, md: 1 } }}
         >
           <Autocomplete
             size="small"
-            sx={{ minWidth: { xs: "100%", md: 320 } }}
+            sx={{ minWidth: { xs: "100%", md: 200 } }}
             options={trainerRoutines}
             getOptionLabel={(o) => o.name ?? "Untitled"}
             onChange={(e, val) => onPickRoutine(val)}
@@ -232,7 +233,7 @@ export default function UserDetail({
             value={assignmentDate}
             onChange={(event) => onChangeAssignmentDate(event.target.value)}
             InputLabelProps={{ shrink: true }}
-            sx={{ minWidth: { xs: "100%", md: 100 } }}
+            sx={{ minWidth: { xs: "100%", md: 50 } }}
             disabled={assigning}
           />
           <TextField
@@ -241,7 +242,7 @@ export default function UserDetail({
             label="Repeat"
             value={repeatChoice}
             onChange={(event) => onChangeRepeatChoice(event.target.value)}
-            sx={{ minWidth: { xs: "100%", md: 100 } }}
+            sx={{ minWidth: { xs: "100%", md: 50 } }}
             disabled={assigning}
           >
             {repeatOptions.map((option) => (

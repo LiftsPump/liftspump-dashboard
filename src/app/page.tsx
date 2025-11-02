@@ -186,11 +186,9 @@ export default function Home() {
               sx={{ flexWrap: 'wrap', gap: { xs: 1, sm: 1.5 } }}
             >
               <Typography variant="h5" fontWeight={700} color="white">Overview</Typography>
-              {trainerId && <Chip size="small" label={`Trainer ${trainerId.slice(0,8)}…`} />}
               <Box sx={{ flex: { xs: 'unset', sm: 1 } }} />
               <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', justifyContent: { xs: 'flex-start', sm: 'flex-end' } }}>
-                <Button variant="outlined" onClick={copyInvite} disabled={!trainerId}>Copy invite link</Button>
-                <Button variant="outlined" onClick={() => location.assign('/payments')}>Payments</Button>
+                {/*<Button variant="outlined" onClick={() => location.assign('/payments')}>Payments</Button>*/}
                 <Button variant="outlined" onClick={() => location.assign('/api/stripe/portal?mode=express')}>Stripe Express</Button>
               </Stack>
             </Stack>

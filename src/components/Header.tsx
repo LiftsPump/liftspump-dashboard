@@ -18,6 +18,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from 'react';
 import ProfileDialog from './ProfileDialog';
 import SettingsDialog from './SettingsDialog';
+import { Alert } from "@mui/material";
 
 export default function Header() {
   const supabase = useSupabaseClient();
@@ -136,10 +137,14 @@ export default function Header() {
       </Menu>
       <Snackbar
         open={!!snack}
-        autoHideDuration={2500}
+        autoHideDuration={2000}
         onClose={() => setSnack(null)}
-        message={snack ?? ''}
-      />
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+      >
+        <Alert onClose={() => setSnack(null)} severity={"success"} sx={{ width: '100%' }}>
+          {snack}
+        </Alert>
+      </Snackbar>
       <ProfileDialog open={openProfile} onClose={() => setOpenProfile(false)} />
       <SettingsDialog open={openSettings} onClose={() => setOpenSettings(false)} onPhotoChanged={(url) => setPhotoUrl(url)} />
     </header>
