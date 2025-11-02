@@ -50,7 +50,7 @@ export async function GET(req: NextRequest) {
     .from("routines")
     .select("id, name, type, text, picture, days, weekly, date, duration, creator_id")
     .eq("creator_id", userId)
-    .eq("type", "date")
+    .in("type", ["date", "assigned"])
     .order("date", { ascending: false })
     .limit(50);
 

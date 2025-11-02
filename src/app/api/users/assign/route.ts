@@ -7,44 +7,52 @@ export async function POST(req: NextRequest) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     )
   const body = await req.json().catch(() => ({}));
-  const targetUserId = String(body?.target_user_id || "").trim();
-  const trainerRoutineId = String(body?.trainer_routine_id || "").trim();
+
+  const authHeader = req.headers.get("authorization") || req.headers.get("Authorization");
+  const jwt = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : undefined;
+  if (!jwt) {
+    return NextResponse.json({ error: "Missing auth session" }, { status: 401 });
+  }
+
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  const normUUID = (v: any): string | null => {
+    if (!v) return null;
+    if (typeof v === "string" && UUID_RE.test(v.trim())) return v.trim();
+    if (typeof v === "object" && typeof v.id === "string" && UUID_RE.test(v.id.trim())) return v.id.trim();
+    return null;
+  };
+  const targetUserId = normUUID(body?.target_user_id);
+  const trainerRoutineId = normUUID(body?.trainer_routine_id);
   const rawRepeatDays = body?.repeat_days;
   const rawRepeatWeekly = body?.repeat_weekly;
   const rawAssignedDate = typeof body?.assigned_date === 'string' ? body.assigned_date : null;
 
   if (!targetUserId || !trainerRoutineId) {
-    return NextResponse.json({ error: "Missing target user or routine" }, { status: 400 });
+    return NextResponse.json({ error: "Invalid or missing target_user_id or trainer_routine_id" }, { status: 400 });
   }
 
   const {
     data: { user },
     error: userError,
-  } = await admin.auth.getUser();
-
+  } = await admin.auth.getUser(jwt);
   if (userError) {
     return NextResponse.json({ error: userError.message }, { status: 500 });
   }
-
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { data: trainerRows, error: trainerError } = await admin
+  const { data: trainerRow, error: trainerError } = await admin
     .from("trainer")
-    .select("subs")
+    .select("trainer_id")
     .eq("creator_id", user.id)
-    .limit(1);
+    .contains("subs", [targetUserId])
+    .maybeSingle();
 
   if (trainerError) {
     return NextResponse.json({ error: trainerError.message }, { status: 500 });
   }
-
-  const subsList = Array.isArray(trainerRows?.[0]?.subs)
-    ? (trainerRows?.[0]?.subs as string[])
-    : [];
-
-  if (!subsList.includes(targetUserId)) {
+  if (!trainerRow) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

@@ -8,9 +8,7 @@ import styles from "./page.module.css";
 export default function NotFound() {
   return (
     <div className={styles.page}>
-      <Header />
       <main className={styles.main}>
-        <Navigation />
         <Box
           sx={{
             flex: 1,
@@ -27,17 +25,6 @@ export default function NotFound() {
             <Typography variant="h5" color="white">
               We can’t find that page.
             </Typography>
-            <Typography variant="body1" sx={{ opacity: 0.75 }}>
-              Double-check the URL or head back to your dashboard to continue.
-            </Typography>
-            <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
-              <Button component={Link} href="/" variant="contained" color="primary">
-                Go Home
-              </Button>
-              <Button component={Link} href="/join" variant="outlined" color="inherit">
-                Visit Join Page
-              </Button>
-            </Stack>
           </Stack>
         </Box>
       </main>
