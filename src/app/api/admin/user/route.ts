@@ -1,7 +1,6 @@
 export const runtime = "nodejs";
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
-
+import { createClient as createAdminClient } from "@supabase/supabase-js";
 
 export async function GET(req: NextRequest) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -12,7 +11,7 @@ export async function GET(req: NextRequest) {
       { status: 500 }
     );
   }
-  const admin = createClient(supabaseUrl, serviceKey);
+  const admin = createAdminClient(supabaseUrl, serviceKey);
   const emailParam = req.nextUrl.searchParams.get("email");
   const userIdParam = req.nextUrl.searchParams.get("user_id");
 

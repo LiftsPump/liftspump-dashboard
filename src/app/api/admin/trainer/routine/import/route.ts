@@ -1,6 +1,6 @@
 export const runtime = "nodejs";
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createClient as createAdminClient } from "@supabase/supabase-js";
 
 
 export async function POST(req: Request) {
@@ -12,7 +12,7 @@ export async function POST(req: Request) {
       { status: 500 }
     );
   }
-  const admin = createClient(supabaseUrl, serviceKey);
+  const admin = createAdminClient(supabaseUrl, serviceKey);
   const { target_trainer_id, target_user_id, source_routine_ids } = await req.json();
 
   if (!target_trainer_id || !target_user_id || !Array.isArray(source_routine_ids) || !source_routine_ids.length) {

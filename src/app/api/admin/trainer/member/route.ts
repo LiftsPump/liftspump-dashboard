@@ -1,7 +1,7 @@
 export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createClient as createAdminClient } from "@supabase/supabase-js";
 
 export async function POST(req: Request) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -12,7 +12,7 @@ export async function POST(req: Request) {
       { status: 500 }
     );
   }
-  const admin = createClient(supabaseUrl, serviceKey);
+  const admin = createAdminClient(supabaseUrl, serviceKey);
 
   const { trainer_id, member_email, member_id } = await req.json();
 

@@ -2,7 +2,7 @@ export const runtime = "nodejs";
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { randomUUID } from "node:crypto";
-
+import { createClient as createAdminClient } from "@supabase/supabase-js";
 
 export async function POST(req: Request) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -13,7 +13,7 @@ export async function POST(req: Request) {
       { status: 500 }
     );
   }
-  const admin = createClient(supabaseUrl, serviceKey);
+  const admin = createAdminClient(supabaseUrl, serviceKey);
   const { user_id, display_name, bio } = await req.json();
 
   if (!user_id) {
