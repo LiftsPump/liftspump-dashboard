@@ -1,19 +1,16 @@
 export const runtime = "nodejs";
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
 import { randomUUID } from "node:crypto";
-import { createClient as createAdminClient } from "@supabase/supabase-js";
+import { getAdminClient } from "@/utils/supabase/admin";
 
 export async function POST(req: Request) {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!supabaseUrl || !serviceKey) {
+  const admin = getAdminClient();
+  if (!admin) {
     return NextResponse.json(
       { error: "Server misconfigured: missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY" },
       { status: 500 }
     );
   }
-  const admin = createAdminClient(supabaseUrl, serviceKey);
   const { user_id, display_name, bio } = await req.json();
 
   if (!user_id) {
