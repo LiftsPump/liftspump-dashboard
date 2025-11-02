@@ -14,7 +14,6 @@ import { useSession, useSessionContext } from "@supabase/auth-helpers-react";
 import UsersSidebar from "./components/UsersSidebar";
 import UserDetail from "./components/UserDetail";
 import useDocumentTitle from "../../hooks/useDocumentTitle";
-import { supabase } from "@/utils/supabase/client";
 
 // ---- Types ----
 
@@ -332,15 +331,15 @@ export default function Users() {
             return { repeat_days: null, repeat_weekly: null };
         }
       })();
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) {
+      const accessToken = session?.access_token ?? null;
+      if (!accessToken) {
         throw new Error("Not signed in");
       }
       const response = await fetch("/api/users/assign", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${session.access_token}`,
+          Authorization: `Bearer ${accessToken}`,
         },
         body: JSON.stringify({
           target_user_id: selectedUser,
