@@ -43,6 +43,48 @@ type Routine = {
   creator_id: string | null;
 };
 
+type Memory = {
+  id: string;
+  text: string | null;
+  type: string | null;
+  created_at: string | null;
+  confidence: number | null;
+};
+
+type WeightEntry = {
+  id: string;
+  creator_id: string;
+  created_at: string;
+  weight_kg: number | null;
+  source: string | null;
+  bf_percent: number | null;
+};
+
+type RoutineExercise = {
+  id: string;
+  name: string | null;
+  text: string | null;
+  eCode: string | null;
+  routine_id: string | null;
+  creator_id: string | null;
+};
+
+type RoutineSet = {
+  id: string;
+  reps: number | null;
+  weight: number | null;
+  completed: boolean | null;
+  pr: boolean | null;
+  exercise_id: string | null;
+  creator_id: string | null;
+};
+
+type RoutineDetailSnapshot = {
+  routine: Routine | null;
+  exercises: RoutineExercise[];
+  sets: RoutineSet[];
+};
+
 // ---- Theme ----
 
 // ---- Helpers ----
@@ -105,6 +147,17 @@ export default function Users() {
     message: '',
     severity: 'success',
   });
+  const [memories, setMemories] = useState<Memory[]>([]);
+  const [memoriesLoading, setMemoriesLoading] = useState(false);
+  const [memoriesError, setMemoriesError] = useState<string | null>(null);
+  const [memoryVotingKey, setMemoryVotingKey] = useState<string | null>(null);
+  const [weightEntries, setWeightEntries] = useState<WeightEntry[]>([]);
+  const [weightInsight, setWeightInsight] = useState<string | null>(null);
+  const [weightInsightDate, setWeightInsightDate] = useState<string | null>(null);
+  const [weightLoading, setWeightLoading] = useState(false);
+  const [weightError, setWeightError] = useState<string | null>(null);
+  const [routineDetails, setRoutineDetails] = useState<Record<string, RoutineDetailSnapshot>>({});
+  const [routineDetailLoading, setRoutineDetailLoading] = useState<Record<string, boolean>>({});
   const handleSnackClose = () => setSnack((prev) => ({ ...prev, open: false }));
 
   // Supabase Auth Helpers
@@ -219,6 +272,14 @@ export default function Users() {
         setFallbackSummary("");
         setSummaryLoading(false);
         setSummaryWarning(null);
+        setMemories([]);
+        setMemoriesError(null);
+        setWeightEntries([]);
+        setWeightInsight(null);
+        setWeightInsightDate(null);
+        setWeightError(null);
+        setRoutineDetails({});
+        setRoutineDetailLoading({});
         return;
       }
 
@@ -256,6 +317,102 @@ export default function Users() {
     };
 
     load();
+    return () => {
+      alive = false;
+    };
+  }, [selectedUser]);
+
+  useEffect(() => {
+    let alive = true;
+    const loadMemories = async () => {
+      if (!selectedUser) {
+        if (alive) {
+          setMemories([]);
+          setMemoriesError(null);
+          setMemoriesLoading(false);
+        }
+        return;
+      }
+      setMemoriesLoading(true);
+      setMemoriesError(null);
+      try {
+        const response = await fetch(
+          `/api/users/memories?user_id=${encodeURIComponent(selectedUser)}`,
+          { cache: "no-store" }
+        );
+        const payload = await response.json().catch(() => ({}));
+        if (!alive) return;
+        if (!response.ok) {
+          throw new Error(payload?.error || "Failed to load memories");
+        }
+        const items = Array.isArray(payload?.memories)
+          ? (payload.memories as Memory[])
+          : [];
+        setMemories(items);
+      } catch (err: any) {
+        if (alive) {
+          setMemories([]);
+          setMemoriesError(err?.message || "Failed to load memories");
+        }
+      } finally {
+        if (alive) setMemoriesLoading(false);
+      }
+    };
+    loadMemories();
+    return () => {
+      alive = false;
+    };
+  }, [selectedUser]);
+
+  useEffect(() => {
+    let alive = true;
+    const loadWeight = async () => {
+      if (!selectedUser) {
+        if (alive) {
+          setWeightEntries([]);
+          setWeightInsight(null);
+          setWeightInsightDate(null);
+          setWeightError(null);
+          setWeightLoading(false);
+        }
+        return;
+      }
+      setWeightLoading(true);
+      setWeightError(null);
+      try {
+        const response = await fetch(
+          `/api/users/weight?user_id=${encodeURIComponent(selectedUser)}`,
+          { cache: "no-store" }
+        );
+        const payload = await response.json().catch(() => ({}));
+        if (!alive) return;
+        if (!response.ok) {
+          throw new Error(payload?.error || "Failed to load weight data");
+        }
+        const entries = Array.isArray(payload?.entries)
+          ? (payload.entries as WeightEntry[])
+          : [];
+        setWeightEntries(entries);
+        setWeightInsight(
+          typeof payload?.insight === "string" ? payload.insight : null
+        );
+        setWeightInsightDate(
+          typeof payload?.generated_at === "string"
+            ? payload.generated_at
+            : null
+        );
+      } catch (err: any) {
+        if (alive) {
+          setWeightEntries([]);
+          setWeightInsight(null);
+          setWeightInsightDate(null);
+          setWeightError(err?.message || "Failed to load weight data");
+        }
+      } finally {
+        if (alive) setWeightLoading(false);
+      }
+    };
+    loadWeight();
     return () => {
       alive = false;
     };
@@ -299,6 +456,74 @@ export default function Users() {
     // optional: store a trainer note into profile.text if exists
     // placeholder for future edits
     return text;
+  };
+  const voteOnMemory = async (memoryId: string, direction: "up" | "down") => {
+    if (!session?.access_token) {
+      setError("Not signed in");
+      return;
+    }
+    setMemoryVotingKey(`${memoryId}:${direction}`);
+    try {
+      const response = await fetch("/api/users/memories", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ memory_id: memoryId, direction }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(payload?.error || "Failed to update memory");
+      }
+      const updated = payload?.memory as Memory | undefined;
+      if (updated?.id) {
+        setMemories((prev) =>
+          prev.map((m) => (m.id === updated.id ? { ...m, ...updated } : m))
+        );
+      }
+    } catch (err: any) {
+      setError(err?.message || "Failed to update memory");
+    } finally {
+      setMemoryVotingKey(null);
+    }
+  };
+  const loadRoutineDetail = async (routineId: string) => {
+    if (!routineId || !selectedUser) return;
+    if (routineDetails[routineId]) return;
+    setRoutineDetailLoading((prev) => ({ ...prev, [routineId]: true }));
+    try {
+      const response = await fetch(
+        `/api/users/routines/${encodeURIComponent(
+          routineId
+        )}?user_id=${encodeURIComponent(selectedUser)}`,
+        { cache: "no-store" }
+      );
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(payload?.error || "Failed to load routine details");
+      }
+      setRoutineDetails((prev) => ({
+        ...prev,
+        [routineId]: {
+          routine: (payload?.routine as Routine) ?? null,
+          exercises: Array.isArray(payload?.exercises)
+            ? (payload.exercises as RoutineExercise[])
+            : [],
+          sets: Array.isArray(payload?.sets)
+            ? (payload.sets as RoutineSet[])
+            : [],
+        },
+      }));
+    } catch (err: any) {
+      setError(err?.message || "Failed to load routine details");
+    } finally {
+      setRoutineDetailLoading((prev) => {
+        const next = { ...prev };
+        delete next[routineId];
+        return next;
+      });
+    }
   };
 
   const assignRoutineToUser = async () => {
@@ -485,6 +710,19 @@ export default function Users() {
                 summary={summary}
                 summaryLoading={summaryLoading}
                 summaryWarning={summaryWarning}
+                memories={memories as any}
+                memoriesLoading={memoriesLoading}
+                memoriesError={memoriesError}
+                onVoteMemory={voteOnMemory}
+                memoryVotingKey={memoryVotingKey}
+                weightEntries={weightEntries as any}
+                weightInsight={weightInsight}
+                weightInsightDate={weightInsightDate}
+                weightLoading={weightLoading}
+                weightError={weightError}
+                routineDetails={routineDetails as any}
+                routineDetailLoading={routineDetailLoading}
+                onLoadRoutineDetail={loadRoutineDetail}
                 trainerRoutines={trainerRoutines as any}
                 repeatChoice={repeatChoice}
                 onChangeRepeatChoice={setRepeatChoice}
