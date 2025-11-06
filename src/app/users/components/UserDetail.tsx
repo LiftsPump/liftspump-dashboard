@@ -27,6 +27,7 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ThumbUpAltOutlinedIcon from "@mui/icons-material/ThumbUpAltOutlined";
 import ThumbDownAltOutlinedIcon from "@mui/icons-material/ThumbDownAltOutlined";
 import TimelineIcon from "@mui/icons-material/Timeline";
+import ReactECharts from "echarts-for-react";
 
 type Memory = {
   id: string;
@@ -194,28 +195,61 @@ export default function UserDetail({
     }
     return null;
   })();
-  const weightSparklinePoints = useMemo(() => {
-    if (weightSeries.length < 2) return null;
-    const values = weightSeries
-      .map((point) => point.weightLb)
-      .filter((val): val is number => typeof val === "number");
-    if (values.length < 2) return null;
-    const min = Math.min(...values);
-    const max = Math.max(...values);
-    const spread = max - min || 1;
-    return weightSeries
-      .map((point, idx) => {
-        if (typeof point.weightLb !== "number") return null;
-        const x =
-          weightSeries.length === 1
-            ? 0
-            : (idx / (weightSeries.length - 1)) * 100;
-        const norm = (point.weightLb - min) / spread;
-        const y = 100 - norm * 100;
-        return `${x},${y}`;
-      })
-      .filter(Boolean)
-      .join(" ");
+  const weightChartOption = useMemo(() => {
+    const pts = weightSeries
+      .filter((p) => typeof p.weightLb === "number")
+      .map((p) => ({ label: p.label, value: p.weightLb as number }));
+    return {
+      backgroundColor: "transparent",
+      grid: { left: 44, right: 12, top: 10, bottom: 24 },
+      xAxis: {
+        type: "category",
+        data: pts.map((p) => p.label),
+        axisLine: { lineStyle: { color: "#666" } },
+        axisLabel: { color: "#8a8f98" },
+        axisTick: { show: false },
+      },
+      yAxis: {
+        type: "value",
+        axisLine: { show: false },
+        axisLabel: { color: "#8a8f98" },
+        splitLine: { lineStyle: { color: "rgba(138,143,152,0.2)" } },
+      },
+      tooltip: {
+        trigger: "axis",
+        backgroundColor: "#111416",
+        borderColor: "#1f2428",
+        textStyle: { color: "#fff" },
+        formatter: (params: any) => {
+          const p = Array.isArray(params) ? params[0] : params;
+          const label = Array.isArray(params) ? p.axisValueLabel : p?.name;
+          const raw = Array.isArray(params) ? p.data : (p?.data ?? p?.value);
+          const num = typeof raw === 'number' ? raw : Number(raw);
+          const valueText = Number.isFinite(num) ? `${num.toFixed(1)} lb` : '--';
+          return `${label}<br/>${valueText}`;
+        },
+      },
+      series: [
+        {
+          type: "line",
+          smooth: true,
+          showSymbol: false,
+          data: pts.map((p) => p.value),
+          lineStyle: { width: 3, color: "#1AE07F" },
+          areaStyle: {
+            opacity: 0.5,
+            color: {
+              type: "linear",
+              x: 0, y: 0, x2: 0, y2: 1,
+              colorStops: [
+                { offset: 0, color: "rgba(26,224,127,0.35)" },
+                { offset: 1, color: "rgba(26,224,127,0.00)" },
+              ],
+            },
+          },
+        },
+      ],
+    };
   }, [weightSeries]);
 
   if (!selectedProfile) return null;
@@ -492,7 +526,7 @@ export default function UserDetail({
                 ) : null}
                 {weightLoading && <LinearProgress sx={{ mt: 1 }} />}
                 <Stack spacing={1.5} sx={{ mt: 1 }}>
-                  <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} alignItems={{ xs: "flex-start", sm: "flex-end" }} justifyContent="space-between">
+                  <Stack direction={{ xs: "column", sm: "row" }}  spacing={1.5} alignItems={{ xs: "flex-start", sm: "flex-start" }} justifyContent="space-between">
                     <Box>
                       <Typography variant="h4">
                         {latestWeight != null ? `${latestWeight.toFixed(1)} lb` : "--"}
@@ -513,30 +547,15 @@ export default function UserDetail({
                         </Typography>
                       )}
                     </Box>
-                    <Box
-                      component="svg"
-                      viewBox="0 0 100 100"
-                      preserveAspectRatio="none"
-                      sx={{
-                        flex: 1,
-                        height: 80,
-                        display: weightSparklinePoints ? "block" : "none",
-                      }}
-                    >
-                      {weightSparklinePoints ? (
-                        <polyline
-                          points={weightSparklinePoints}
-                          fill="none"
-                          strokeWidth={2}
-                          stroke="#1976d2"
-                        />
-                      ) : null}
+                    <Box sx={{ flex: 1, minHeight: 200, width: "100%" }}>
+                      {weightSeries.filter(p => typeof p.weightLb === "number").length >= 2 ? (
+                        <ReactECharts option={weightChartOption} style={{ height: 200, width: "100%" }} />
+                      ) : (
+                        <Typography variant="body2" color="text.secondary">
+                          Log at least two weights to see a chart.
+                        </Typography>
+                      )}
                     </Box>
-                    {!weightSparklinePoints && (
-                      <Typography variant="body2" color="text.secondary">
-                        Log at least two weights to see a sparkline.
-                      </Typography>
-                    )}
                   </Stack>
                   {weightInsight ? (
                     <Paper variant="outlined" sx={{ p: 1.5, bgcolor: "background.default" }}>
@@ -686,138 +705,138 @@ export default function UserDetail({
               <Stack spacing={1}>
                 {userRoutines.length ? (
                   userRoutines.slice(0, 10).map((r) => {
-                    const expanded = expandedRoutineId === r.id;
-                    const detail = routineDetails?.[r.id];
-                    const detailLoading = Boolean(routineDetailLoading?.[r.id]);
-                    return (
-                      <Accordion
-                        key={r.id}
-                        expanded={expanded}
-                        onChange={(_, isExpanded) => {
-                          setExpandedRoutineId(isExpanded ? r.id : null);
-                          if (isExpanded) {
-                            onLoadRoutineDetail?.(r.id);
-                          }
-                        }}
-                        disableGutters
-                        sx={{
-                          border: "1px solid",
-                          borderColor: "divider",
-                          borderRadius: 1,
-                          "&::before": { display: "none" },
-                        }}
-                      >
-                        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                          <Stack sx={{ width: "100%" }} spacing={0.25}>
+            const expanded = expandedRoutineId === r.id;
+            const detail = routineDetails?.[r.id];
+            const detailLoading = Boolean(routineDetailLoading?.[r.id]);
+            return (
+              <Accordion
+                key={r.id}
+                expanded={expanded}
+                onChange={(_, isExpanded) => {
+                  setExpandedRoutineId(isExpanded ? r.id : null);
+                  if (isExpanded) {
+                    onLoadRoutineDetail?.(r.id);
+                  }
+                }}
+                disableGutters
+                sx={{
+                  border: "1px solid",
+                  borderColor: "divider",
+                  borderRadius: 1,
+                  "&::before": { display: "none" },
+                }}
+              >
+                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                  <Stack sx={{ width: "100%" }} spacing={0.25}>
                             <Stack
                               direction={{ xs: "column", sm: "row" }}
                               spacing={1}
                               justifyContent="space-between"
                               alignItems={{ xs: "flex-start", sm: "center" }}
                             >
-                              <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                                {r.name || "Untitled"}
-                              </Typography>
-                              <Stack direction="row" spacing={0.5}>
-                                {r.duration != null ? (
-                                  <Chip size="small" label={`${Math.round(r.duration / 60)} min`} />
-                                ) : null}
-                                {repeatSummary(r) ? (
-                                  <Chip size="small" variant="outlined" label={repeatSummary(r)} />
-                                ) : null}
-                              </Stack>
-                            </Stack>
-                            <Typography variant="body2" color="text.secondary">
-                              {(r.type || "session")} · {r.date ? new Date(r.date).toLocaleString() : "n/a"}
-                            </Typography>
-                          </Stack>
-                        </AccordionSummary>
-                        <AccordionDetails sx={{ bgcolor: "background.default" }}>
+                      <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                        {r.name || "Untitled"}
+                      </Typography>
+                      <Stack direction="row" spacing={0.5}>
+                        {r.duration != null ? (
+                          <Chip size="small" label={`${Math.round(r.duration / 60)} min`} />
+                        ) : null}
+                        {repeatSummary(r) ? (
+                          <Chip size="small" variant="outlined" label={repeatSummary(r)} />
+                        ) : null}
+                      </Stack>
+                    </Stack>
+                    <Typography variant="body2" color="text.secondary">
+                      {(r.type || "session")} · {r.date ? new Date(r.date).toLocaleString() : "n/a"}
+                    </Typography>
+                  </Stack>
+                </AccordionSummary>
+                <AccordionDetails sx={{ bgcolor: "background.default" }}>
                           {detailLoading && !detail ? <LinearProgress /> : null}
-                          {detail ? (
-                            detail.exercises.length ? (
-                              (() => {
+                  {detail ? (
+                    detail.exercises.length ? (
+                      (() => {
                                 const setsByExercise = (detail.sets ?? []).reduce<
                                   Record<string, RoutineSet[]>
                                 >((acc, set) => {
-                                  if (!set.exercise_id) return acc;
-                                  if (!acc[set.exercise_id]) acc[set.exercise_id] = [];
-                                  acc[set.exercise_id].push(set);
-                                  return acc;
-                                }, {});
-                                return detail.exercises.map((exercise) => {
-                                  const setsForExercise = setsByExercise[exercise.id] ?? [];
-                                  return (
-                                    <Paper
-                                      key={exercise.id}
-                                      variant="outlined"
-                                      sx={{ p: 1.25, mb: 1, borderColor: "divider" }}
-                                    >
-                                      <Stack spacing={0.5}>
+                          if (!set.exercise_id) return acc;
+                          if (!acc[set.exercise_id]) acc[set.exercise_id] = [];
+                          acc[set.exercise_id].push(set);
+                          return acc;
+                        }, {});
+                        return detail.exercises.map((exercise) => {
+                          const setsForExercise = setsByExercise[exercise.id] ?? [];
+                        return (
+                          <Paper
+                            key={exercise.id}
+                            variant="outlined"
+                            sx={{ p: 1.25, mb: 1, borderColor: "divider" }}
+                          >
+                            <Stack spacing={0.5}>
                                         <Stack
                                           direction="row"
                                           spacing={1}
                                           alignItems="center"
                                           justifyContent="space-between"
                                         >
-                                          <Typography variant="subtitle2">
-                                            {exercise.name || "Exercise"}
-                                          </Typography>
-                                          {exercise.eCode ? (
-                                            <Chip size="small" variant="outlined" label={exercise.eCode} />
-                                          ) : null}
-                                        </Stack>
-                                        {exercise.text ? (
-                                          <Typography variant="body2" color="text.secondary">
-                                            {exercise.text}
-                                          </Typography>
-                                        ) : null}
-                                        {setsForExercise.length ? (
-                                          <Stack direction="row" spacing={0.5} flexWrap="wrap">
-                                            {setsForExercise.map((set, idx) => (
-                                              <Chip
-                                                key={`${set.id}-${idx}`}
-                                                size="small"
-                                                color={set.pr ? "success" : set.completed ? "primary" : "default"}
-                                                variant={set.pr ? "filled" : "outlined"}
-                                                label={`S${idx + 1}: ${set.reps ?? "?"} reps${
+                                <Typography variant="subtitle2">
+                                  {exercise.name || "Exercise"}
+                                </Typography>
+                                {exercise.eCode ? (
+                                  <Chip size="small" variant="outlined" label={exercise.eCode} />
+                                ) : null}
+                              </Stack>
+                              {exercise.text ? (
+                                <Typography variant="body2" color="text.secondary">
+                                  {exercise.text}
+                                </Typography>
+                              ) : null}
+                              {setsForExercise.length ? (
+                                <Stack direction="row" spacing={0.5} flexWrap="wrap">
+                                  {setsForExercise.map((set, idx) => (
+                                    <Chip
+                                      key={`${set.id}-${idx}`}
+                                      size="small"
+                                      color={set.pr ? "success" : set.completed ? "primary" : "default"}
+                                      variant={set.pr ? "filled" : "outlined"}
+                                                label={`Set ${idx + 1}: ${set.reps ?? "?"} reps${
                                                   set.weight != null ? ` @ ${set.weight}` : ""
                                                 }`}
-                                              />
-                                            ))}
-                                          </Stack>
-                                        ) : (
-                                          <Typography variant="body2" color="text.secondary">
-                                            No sets logged for this exercise.
-                                          </Typography>
-                                        )}
-                                      </Stack>
-                                    </Paper>
-                                  );
-                                });
-                              })()
-                            ) : (
-                              <Typography variant="body2" color="text.secondary">
-                                No exercises captured for this routine.
-                              </Typography>
-                            )
-                          ) : (
-                            <Typography variant="body2" color="text.secondary">
-                              Expand to load exercises and sets for this session.
-                            </Typography>
-                          )}
-                        </AccordionDetails>
-                      </Accordion>
-                    );
+                                    />
+                                  ))}
+                                </Stack>
+                              ) : (
+                                <Typography variant="body2" color="text.secondary">
+                                  No sets logged for this exercise.
+                                </Typography>
+                              )}
+                            </Stack>
+                          </Paper>
+                        );
+                        });
+                      })()
+                    ) : (
+                      <Typography variant="body2" color="text.secondary">
+                        No exercises captured for this routine.
+                      </Typography>
+                    )
+                  ) : (
+                    <Typography variant="body2" color="text.secondary">
+                      Expand to load exercises and sets for this session.
+                    </Typography>
+                  )}
+                </AccordionDetails>
+              </Accordion>
+            );
                   })
                 ) : (
-                  <Typography variant="body2">No routines yet.</Typography>
-                )}
-              </Stack>
-            </Stack>
+            <Typography variant="body2">No routines yet.</Typography>
+          )}
+        </Stack>
+      </Stack>
           )}
         </Box>
-      </Box>
-      </Paper>
-    );
+    </Box>
+  </Paper>
+  );
 }
