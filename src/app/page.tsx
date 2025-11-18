@@ -29,6 +29,13 @@ export default function Home() {
 
   useDocumentTitle("Dashboard | Liftspump");
 
+  const formatTime = (value: string | null | undefined) => {
+    if (!value) return "n/a";
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return "n/a";
+    return d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }).toLowerCase();
+  };
+
   useEffect(() => {
     let alive = true;
     const run = async () => {
@@ -110,18 +117,26 @@ export default function Home() {
         const series = Object.entries(days).map(([day, v]) => ({ day, subs: v.subs, revenue: v.revenue }));
         if (alive) setChart(series);
 
-        // Recent activity (latest 10 subs)
-        const latest = (subsRows ?? [])
-          .slice() // shallow copy
-          .sort((a: any, b: any) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
-          .slice(0, 10)
-          .map((s: any) => ({
-            id: s.id as string,
-            title: `${String(s.tier_key || 'tier')}`,
-            subtitle: `${String(s.status || 'status')}`,
-            date: s.created_at ? new Date(s.created_at).toLocaleString() : 'n/a',
-          }));
-        if (alive) setActivity(latest);
+        // Recent activity: latest routines completed by clients
+        try {
+          const res = await fetch("/api/dashboard/activity", { cache: "no-store" });
+          const payload = await res.json().catch(() => ({}));
+          if (!alive) return;
+          if (res.ok) {
+            const rows = Array.isArray(payload?.activity) ? payload.activity : [];
+            const latest = rows.slice(0, 10).map((item: any, idx: number) => ({
+              id: String(item?.id || item?.date || idx),
+              title: item?.routineName || "Workout",
+              subtitle: item?.clientName || "Client",
+              date: formatTime(item?.date ?? null),
+            }));
+            setActivity(latest);
+          } else {
+            setActivity([]);
+          }
+        } catch {
+          if (alive) setActivity([]);
+        }
       }
       if (alive) setLoading(false);
     };
@@ -204,14 +219,13 @@ export default function Home() {
               <>
               <Box sx={{
                 display: 'grid',
-                gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: 'repeat(3, 1fr)', lg: 'repeat(5, 1fr)' },
+                gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: 'repeat(3, 1fr)', lg: 'repeat(4, 1fr)' },
                 gap: 2,
               }}>
                 <StatCard icon={<GroupIcon fontSize="small" />} label="SUBSCRIBERS" value={<span style={{color:'#fff'}}>{subsCount}</span>} sub="Total users subscribed to you" accent="#1AE080" />
                 <StatCard icon={<LayersIcon fontSize="small" />} label="ACTIVE TIERS" value={<span style={{color:'#fff'}}>{tiersCount}</span>} sub="Manage in Payments" accent="#a78bfa" />
                 <StatCard icon={<FitnessCenterIcon fontSize="small" />} label="TRAINER ROUTINES" value={<span style={{color:'#fff'}}>{routinesCount}</span>} sub="Available to assign" accent="#60a5fa" />
-                <StatCard icon={<InsightsIcon fontSize="small" />} label="ACTIVE SUBS" value={<span style={{color:'#fff'}}>{activeStripeSubs}</span>} sub="Stripe subscription status" accent="#f59e0b" />
-                <StatCard icon={<PaidIcon fontSize="small" />} label="MRR" value={<span style={{color:'#fff'}}>${mrr}</span>} sub="Approx. based on tier prices" accent="#34d399" />
+                <StatCard icon={<PaidIcon fontSize="small" />} label="Revenue" value={<span style={{color:'#fff'}}>${subsCount*20}</span>} sub="Approx. based on subscriptions" accent="#34d399" />
               </Box>
 
               {/* Recent activity */}
