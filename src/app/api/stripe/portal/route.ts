@@ -32,6 +32,31 @@ export async function GET(req: NextRequest) {
   let authUserId: string | undefined
   let supabase: ReturnType<typeof createSupabaseServer> | null = null
 
+  // Try to authenticate via Authorization: Bearer <jwt> header first (mobile / API clients)
+  const authHeader = req.headers.get('authorization')
+  let jwt: string | undefined
+  if (authHeader) {
+    const [scheme, token] = authHeader.split(' ')
+    if (scheme?.toLowerCase() === 'bearer' && token) {
+      jwt = token
+    }
+  }
+
+  // If we have a JWT and an admin client, prefer that for user resolution
+  if (jwt && admin) {
+    try {
+      const { data: auth } = await admin.auth.getUser(jwt)
+      const user = auth.user
+      if (user) {
+        authUserId = user.id
+        const authEmail = user.email || undefined
+        if (!resolvedUserId) resolvedUserId = user.id
+        if (!requesterEmail && authEmail) requesterEmail = authEmail
+      }
+    } catch {}
+  }
+
+  // Fall back to cookie-based Supabase server client (web dashboard)
   if (supabaseUrl && serviceKey) {
     try {
       supabase = createSupabaseServer()
@@ -40,13 +65,16 @@ export async function GET(req: NextRequest) {
 
   const client = admin ?? supabase
 
-  if (supabase) {
+  if (supabase && !authUserId) {
     try {
       const { data: auth } = await supabase.auth.getUser()
-      authUserId = auth.user?.id || authUserId
-      const authEmail = auth.user?.email || undefined
-      if (!resolvedUserId && authUserId) resolvedUserId = authUserId
-      if (!requesterEmail && authEmail) requesterEmail = authEmail
+      const user = auth.user
+      if (user) {
+        authUserId = user.id
+        const authEmail = user.email || undefined
+        if (!resolvedUserId) resolvedUserId = user.id
+        if (!requesterEmail && authEmail) requesterEmail = authEmail
+      }
     } catch {}
   }
 
