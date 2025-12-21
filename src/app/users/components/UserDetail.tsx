@@ -195,10 +195,13 @@ export default function UserDetail({
     }
     return null;
   })();
+  const [weightChoice, setWeightChoice] = useState<number>(90);
   const weightChartOption = useMemo(() => {
     const pts = weightSeries
       .filter((p) => typeof p.weightLb === "number")
+      .filter((p) => ((latestWeightDate??new Date).getTime() - p.date.getTime()) <= weightChoice * 86400000)
       .map((p) => ({ label: p.label, value: p.weightLb as number }));
+    console.log("weightSeries", new Date().getTime())
     return {
       backgroundColor: "transparent",
       grid: { left: 44, right: 12, top: 10, bottom: 24 },
@@ -250,7 +253,7 @@ export default function UserDetail({
         },
       ],
     };
-  }, [weightSeries]);
+  }, [weightSeries, weightChoice]);
 
   if (!selectedProfile) return null;
   // ---- quick metrics for chips ----
@@ -317,7 +320,6 @@ export default function UserDetail({
   };
 
   const bmi = computeBMI(selectedProfile.height ?? null, selectedProfile.weight ?? null);
-  const [weightChoice, setWeightChoice] = useState(0);
   const bmiCat = bmiCategory(bmi);
   const spw = avgSessionsPerWeek(userRoutines, 8);
   const consLbl = consistencyLabel(spw);
@@ -526,11 +528,11 @@ export default function UserDetail({
                   <TextField
                     select
                     size="small"
-                    label="History"
+                    label="Range"
                     value={weightChoice}
-                    onChange={(event) => onChangeRepeatChoice(event.target.value)}
+                    onChange={(event) => setWeightChoice(Number(event.target.value))}
                     sx={{ minWidth: { xs: "100%", md: 150 } }}
-                    disabled={assigning}
+                    disabled={weightLoading}
                   >
                   {weightOptions.map((option) => (
                     <MenuItem key={option.value} value={option.value}>
