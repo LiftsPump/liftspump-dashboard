@@ -58,14 +58,10 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const since = new Date();
-  since.setDate(since.getDate() - 30);
-
   const { data: entries, error: entriesError } = await admin
     .from("weight_entry")
     .select("id, creator_id, created_at, weight_kg, source, bf_percent")
     .eq("creator_id", userId)
-    .gte("created_at", since.toISOString())
     .order("created_at", { ascending: false })
     .limit(90);
 

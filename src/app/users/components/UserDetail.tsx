@@ -317,6 +317,7 @@ export default function UserDetail({
   };
 
   const bmi = computeBMI(selectedProfile.height ?? null, selectedProfile.weight ?? null);
+  const [weightChoice, setWeightChoice] = useState(0);
   const bmiCat = bmiCategory(bmi);
   const spw = avgSessionsPerWeek(userRoutines, 8);
   const consLbl = consistencyLabel(spw);
@@ -330,6 +331,11 @@ export default function UserDetail({
     { value: 'every-4', label: 'Every 4 days' },
     { value: 'weekly', label: 'Once a week' },
     { value: 'biweekly', label: 'Every 2 weeks' },
+  ];
+  const weightOptions = [
+    {value: 30, label: "Past month"},
+    {value: 90, label: "Past 3 months"},
+    {value: 365, label: "Past year"}
   ];
   const tabOptions = [
     { value: "insights", label: "Insights" },
@@ -517,7 +523,21 @@ export default function UserDetail({
                     <TimelineIcon fontSize="small" />
                     <Typography variant="h6" sx={{ fontWeight: 700 }}>Weight tracking</Typography>
                   </Stack>
-                  <Chip size="small" label="Last 30 days" />
+                  <TextField
+                    select
+                    size="small"
+                    label="History"
+                    value={weightChoice}
+                    onChange={(event) => onChangeRepeatChoice(event.target.value)}
+                    sx={{ minWidth: { xs: "100%", md: 150 } }}
+                    disabled={assigning}
+                  >
+                  {weightOptions.map((option) => (
+                    <MenuItem key={option.value} value={option.value}>
+                      {option.label}
+                    </MenuItem>
+                  ))}
+                </TextField>
                 </Stack>
                 {weightError ? (
                   <Typography variant="body2" color="error" sx={{ mt: 1 }}>
