@@ -3,18 +3,39 @@
   min-width: 200px;
   margin: 0;
   color: #e5e7eb;
-  border-radius: 12px;
   border: 1px solid var(--glass-border);
-  background: var(--glass-bg);
+  background: rgba(16,16,16, 0.9);
   box-shadow: var(--glass-shadow);
   overflow: hidden;
   background-image: radial-gradient(600px 180px at -20% -20%, rgba(26,224,128,0.08), transparent);
+  position: sticky;
+  top: 0;
+  z-index: 1100;
+  align-self: stretch;
+  height: 100%;
 }
 
 .navButton {
   padding: 0.9rem 1rem;
   border-bottom: 1px solid #2a2a2a;
   transition: background 0.2s ease, transform 0.05s ease;
+}
+.logoImage {
+  height: 40px;
+  margin-top: 8;
+  margin-bottom: 8;
+  margin-left: 4;
+  border-radius: 12px;
+  width: auto;
+}
+
+.titleText {
+  font-size: 1.5rem;
+  font-weight: bold;
+  flex-grow: 1;
+  text-align: left;
+  padding-left: 1.8rem;
+  margin-top: 1;
 }
 
 .navButton:hover { background-color: rgba(255,255,255,0.06); }
@@ -42,6 +63,8 @@
     box-shadow: none;
     overflow: visible;
     background-image: none;
+    position: static;
+    height: auto;
   }
 
   .navButton {

@@ -19,6 +19,9 @@ import { useEffect, useMemo, useState } from 'react';
 import ProfileDialog from './ProfileDialog';
 import SettingsDialog from './SettingsDialog';
 import { Alert } from "@mui/material";
+import TextField from '@mui/material/TextField';
+import InputAdornment from '@mui/material/InputAdornment';
+import SearchIcon from '@mui/icons-material/Search';
 
 export default function Header() {
   const supabase = useSupabaseClient();
@@ -31,6 +34,7 @@ export default function Header() {
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [trainerId, setTrainerId] = useState<string | null>(null);
   const [snack, setSnack] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
 
   useEffect(() => {
     let alive = true;
@@ -87,10 +91,39 @@ export default function Header() {
 
   return (
     <header className={styles.header}>
-      <div style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => router.push('/') } title="Home">
-        <Image src={logo} alt="LiftsPump logo" className={styles.logo}/>
-        <div className={styles.titleText}>LIFTSPUMP</div>
-      </div>
+      <TextField
+        size="small"
+        placeholder="Search clients, workouts…"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        variant="outlined"
+        sx={{
+          width: 400,
+          mr: 2,
+          ml: -3,
+          '& .MuiOutlinedInput-root': {
+            bgcolor: '#0b0b0b',
+            color: '#e5e7eb',
+            borderRadius: 2,
+          },
+          '& fieldset': {
+            borderColor: '#2a2a2a',
+          },
+          '&:hover fieldset': {
+            borderColor: '#3a3a3a',
+          },
+          '&.Mui-focused fieldset': {
+            borderColor: '#1AE080',
+          },
+        }}
+        InputProps={{
+          startAdornment: (
+            <InputAdornment position="start">
+              <SearchIcon sx={{ color: '#9ca3af' }} />
+            </InputAdornment>
+          ),
+        }}
+      />
       {inviteUrl && (
         <Button
           size="small"

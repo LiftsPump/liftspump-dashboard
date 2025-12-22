@@ -357,7 +357,7 @@ export default function Routines() {
                 width: "100%",
                 maxWidth: 1200,
                 margin: "0 auto",
-                height: { xs: "auto", lg: "72vh" },
+                height: { xs: "auto", lg: "84vh" },
                 overflow: { xs: "visible", lg: "hidden" },
               }}
             >

@@ -86,7 +86,7 @@ export default function Home() {
           const cents = typeof r.price === 'number' ? r.price : 0;
           priceMap.set(r.key, cents);
         });
-        const activeSet = new Set(['active','trialing','past_due','unpaid','incomplete']);
+        const activeSet = new Set(['active', 'trialing', 'past_due', 'unpaid', 'incomplete']);
         const act = (subsRows ?? []).filter((s: any) => activeSet.has(String(s.status || ''))).length;
         if (alive) setActiveStripeSubs(act);
         // MRR = sum of active subs current monthly price (approx by tier price)
@@ -103,12 +103,12 @@ export default function Home() {
         for (let i = 29; i >= 0; i--) {
           const d = new Date(today);
           d.setDate(today.getDate() - i);
-          const key = d.toISOString().slice(0,10);
+          const key = d.toISOString().slice(0, 10);
           days[key] = { subs: 0, revenue: 0 };
         }
         (subsRows ?? []).forEach((s: any) => {
           if (!s.created_at) return;
-          const key = new Date(s.created_at).toISOString().slice(0,10);
+          const key = new Date(s.created_at).toISOString().slice(0, 10);
           if (!days[key]) return;
           days[key].subs += 1;
           const cents = priceMap.get(String(s.tier_key || '')) || 0;
@@ -148,7 +148,7 @@ export default function Home() {
     if (!trainerId) return;
     const base = typeof window !== 'undefined' ? window.location.origin : '';
     const inviteUrl = `${base}/join?trainer_id=${encodeURIComponent(trainerId)}`;
-    try { await navigator.clipboard?.writeText(inviteUrl); } catch {}
+    try { await navigator.clipboard?.writeText(inviteUrl); } catch { }
   };
 
   const StatCard = ({
@@ -217,35 +217,45 @@ export default function Home() {
               <Alert severity="error">{error}</Alert>
             ) : (
               <>
-              <Box sx={{
-                display: 'grid',
-                gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: 'repeat(3, 1fr)', lg: 'repeat(4, 1fr)' },
-                gap: 2,
-              }}>
-                <StatCard icon={<GroupIcon fontSize="small" />} label="SUBSCRIBERS" value={<span style={{color:'#fff'}}>{subsCount}</span>} sub="Total users subscribed to you" accent="#1AE080" />
-                <StatCard icon={<LayersIcon fontSize="small" />} label="ACTIVE TIERS" value={<span style={{color:'#fff'}}>{tiersCount}</span>} sub="Manage in Payments" accent="#a78bfa" />
-                <StatCard icon={<FitnessCenterIcon fontSize="small" />} label="TRAINER ROUTINES" value={<span style={{color:'#fff'}}>{routinesCount}</span>} sub="Available to assign" accent="#60a5fa" />
-                <StatCard icon={<PaidIcon fontSize="small" />} label="Revenue" value={<span style={{color:'#fff'}}>${subsCount*20}</span>} sub="Approx. based on subscriptions" accent="#34d399" />
-              </Box>
+                <Box sx={{
+                  display: 'grid',
+                  gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: 'repeat(3, 1fr)', lg: 'repeat(4, 1fr)' },
+                  gap: 2,
+                }}>
+                  <StatCard icon={<GroupIcon fontSize="small" />} label="SUBSCRIBERS" value={<span style={{ color: '#fff' }}>{subsCount}</span>} sub="Total users subscribed to you" accent="#1AE080" />
+                  <StatCard icon={<LayersIcon fontSize="small" />} label="ACTIVE TIERS" value={<span style={{ color: '#fff' }}>{tiersCount}</span>} sub="Manage in Payments" accent="#a78bfa" />
+                  <StatCard icon={<FitnessCenterIcon fontSize="small" />} label="TRAINER ROUTINES" value={<span style={{ color: '#fff' }}>{routinesCount}</span>} sub="Available to assign" accent="#60a5fa" />
+                  <StatCard icon={<PaidIcon fontSize="small" />} label="Revenue" value={<span style={{ color: '#fff' }}>${subsCount * 20}</span>} sub="Approx. based on subscriptions" accent="#34d399" />
+                </Box>
 
-              {/* Recent activity */}
-              <Paper sx={{ p: 2, border: '1px solid', borderColor: '#2a2a2a', bgcolor: '#1a1a1a', color: 'white' }}>
-                <Typography variant="subtitle1" sx={{ mb: 1 }} color="white">Recent activity</Typography>
-                {activity.length ? (
-                  <Stack spacing={1}>
-                    {activity.map((a) => (
-                      <Stack key={a.id} direction="row" spacing={1} alignItems="center" sx={{ py: 0.5, borderBottom: '1px dashed #2a2a2a' }}>
-                        <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: '#1AE080' }} />
-                        <Typography variant="body2" sx={{ minWidth: 120, opacity: 0.85 }}>{a.date}</Typography>
-                        <Typography variant="body2" sx={{ flex: 1 }}>{a.title}</Typography>
-                        <Chip size="small" label={a.subtitle} sx={{ bgcolor: '#111', color: '#e5e7eb', borderColor: '#333' }} variant="outlined" />
-                      </Stack>
-                    ))}
-                  </Stack>
-                ) : (
-                  <Typography variant="body2" sx={{ opacity: 0.8 }}>No recent activity.</Typography>
-                )}
-              </Paper>
+                {/* Recent activity */}
+                <Paper sx={{ p: 2, border: '1px solid', borderColor: '#2a2a2a', bgcolor: '#1a1a1a', color: 'white' }}>
+                  <Typography variant="subtitle1" sx={{ mb: 1 }} color="white">Recent activity</Typography>
+                  {activity.length ? (
+                    <Stack spacing={1}>
+                      {activity.map((a) => (
+                        <Stack key={a.id} direction="row" spacing={1} alignItems="center" sx={{ py: 0.5, borderBottom: '1px dashed #2a2a2a' }}>
+                          <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: '#1AE080' }} />
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              width: 90,        // Tweak this number (try 80, 90, 100)
+                              flexShrink: 0,
+                              opacity: 0.85,
+                              textAlign: 'right' // or 'right' depending on preference
+                            }}
+                          >
+                            {a.date}
+                          </Typography>
+                          <Typography variant="body2" sx={{ flex: 1 }}>{a.title}</Typography>
+                          <Chip size="small" label={a.subtitle} sx={{ bgcolor: '#111', color: '#e5e7eb', borderColor: '#333' }} variant="outlined" />
+                        </Stack>
+                      ))}
+                    </Stack>
+                  ) : (
+                    <Typography variant="body2" sx={{ opacity: 0.8 }}>No recent activity.</Typography>
+                  )}
+                </Paper>
               </>
             )}
 

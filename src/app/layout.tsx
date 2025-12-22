@@ -7,8 +7,10 @@ import "./globals.css";
 import { useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import SupabaseProvider from "../components/SupabaseProvider"
+import BreathingDots from "../components/breathingDots";
 
 import { useSessionContext, useSupabaseClient } from "@supabase/auth-helpers-react";
+import { relative } from "path";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -209,12 +211,29 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable}`}>
+        <div 
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100vw',
+            height: '100vh',
+            zIndex: 0, // Keep at 0
+            pointerEvents: 'none',
+          }}
+        >
+          <BreathingDots />
+        </div>
         <SupabaseProvider>
           <AuthRedirect />
           <AppRouterCacheProvider>
             <ThemeProvider theme={theme}>
               <CssBaseline />
-              {children}
+              <div >
+                <div className="relative z-10">
+                  {children}
+                </div>
+              </div>
             </ThemeProvider>
           </AppRouterCacheProvider>
         </SupabaseProvider>
