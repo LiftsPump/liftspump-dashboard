@@ -35,7 +35,6 @@ export default function UsersSidebar({
         minWidth: { xs: "auto", lg: 320 },
         display: "flex",
         flexDirection: "column",
-        borderRadius: 2,
         overflow: "hidden",
         bgcolor: "background.paper",
         color: "text.primary",

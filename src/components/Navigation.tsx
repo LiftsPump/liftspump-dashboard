@@ -45,7 +45,7 @@ export default function Navigation() {
   return (
     <List className={styles.listSelector} disablePadding>
       <ListItem disableGutters sx={{ px: 1, py: 1 }}>
-        <div style={{ marginTop: 'auto', display: 'flex', alignItems: 'center', cursor: 'pointer' }} title="Home">
+        <div style={{ marginTop: 'auto', display: 'flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => location.assign("/")} title="Home">
           <Image src={logo} alt="LiftsPump logo" className={styles.logoImage}/>
           <div className={styles.titleText}>LIFTSPUMP</div>
         </div>

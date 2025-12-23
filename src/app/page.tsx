@@ -8,9 +8,10 @@ import { Box, Paper, Stack, Typography, Button, Chip, CircularProgress, Alert } 
 import GroupIcon from "@mui/icons-material/Group";
 import LayersIcon from "@mui/icons-material/Layers";
 import FitnessCenterIcon from "@mui/icons-material/FitnessCenter";
-import InsightsIcon from "@mui/icons-material/Insights";
 import PaidIcon from "@mui/icons-material/Paid";
 import useDocumentTitle from "../hooks/useDocumentTitle";
+import StatCard from "../components/StatCard";
+import QuickOverviewRings from "../components/QuickOverviewRings";
 
 export default function Home() {
   const supabase = useSupabaseClient();
@@ -26,6 +27,9 @@ export default function Home() {
   const [mrr, setMrr] = useState<number>(0);
   const [chart, setChart] = useState<{ day: string; subs: number; revenue: number }[]>([]);
   const [activity, setActivity] = useState<{ id: string; title: string; subtitle: string; date: string }[]>([]);
+  const [syncedThisWeek, setSyncedThisWeek] = useState<number>(0);
+  const [completedGrowthPercent, setCompletedGrowthPercent] = useState<number>(0);
+  const [trainerName, setTrainerName] = useState<string | null>(null);
 
   useDocumentTitle("Dashboard | Liftspump");
 
@@ -33,7 +37,26 @@ export default function Home() {
     if (!value) return "n/a";
     const d = new Date(value);
     if (Number.isNaN(d.getTime())) return "n/a";
-    return d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }).toLowerCase();
+    const seconds = Math.floor((Date.now() - d.getTime()) / 1000);
+
+    const units = [
+      { label: "y", value: 31536000 },
+      { label: "mo", value: 2592000 },
+      { label: "w", value: 604800 },
+      { label: "d", value: 86400 },
+      { label: "h", value: 3600 },
+      { label: "m", value: 60 },
+      { label: "s", value: 1 },
+    ];
+
+    for (const unit of units) {
+      const amount = Math.floor(seconds / unit.value);
+      if (amount >= 1) {
+        return `${amount}${unit.label} ago`;
+      }
+    }
+
+    return "just now";
   };
 
   useEffect(() => {
@@ -46,14 +69,56 @@ export default function Home() {
       // trainer row
       const { data: tRow, error: tErr } = await supabase
         .from('trainer')
-        .select('trainer_id, subs')
+        .select('trainer_id, subs, display_name')
         .eq('creator_id', uid)
         .limit(1);
       if (tErr) { if (alive) { setError(tErr.message); setLoading(false); } return; }
       const tId = (tRow?.[0]?.trainer_id as string) || null;
       if (alive) setTrainerId(tId);
+      const tName = (tRow?.[0]?.display_name as string) || null;
+      if (alive) setTrainerName(tName);
       const subs = Array.isArray(tRow?.[0]?.subs) ? (tRow![0]!.subs as string[]) : [];
       if (alive) setSubsCount(subs.length);
+      if (subs.length) {
+        const { data: profileRows } = await supabase
+          .from("profile")
+          .select("creator_id,last_synced")
+          .in("creator_id", subs);
+        const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+        const syncedCount = (profileRows ?? []).filter((profile: any) => {
+          if (!profile?.last_synced) return false;
+          const last = new Date(profile.last_synced).getTime();
+          return Number.isFinite(last) && last >= weekAgo;
+        }).length;
+        if (alive) setSyncedThisWeek(syncedCount);
+
+        // TODO: confirm the correct timestamp column for completed sets (created_at vs completed_at).
+        const since = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
+        const { data: completedSets } = await supabase
+          .from("sets")
+          .select("id, completed, created_at, creator_id")
+          .in("creator_id", subs)
+          .eq("completed", true)
+          .gte("created_at", since);
+        const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
+        let prev = 0;
+        let recent = 0;
+        (completedSets ?? []).forEach((set: any) => {
+          if (!set?.created_at) return;
+          const ts = new Date(set.created_at).getTime();
+          if (!Number.isFinite(ts)) return;
+          if (ts < cutoff) prev += 1;
+          else recent += 1;
+        });
+        const growth =
+          prev === 0 ? (recent > 0 ? 100 : 0) : Math.round(((recent - prev) / prev) * 100);
+        if (alive) setCompletedGrowthPercent(growth);
+      } else {
+        if (alive) {
+          setSyncedThisWeek(0);
+          setCompletedGrowthPercent(0);
+        }
+      }
       // tiers
       if (tId) {
         const { count: tiersCnt } = await supabase
@@ -151,41 +216,13 @@ export default function Home() {
     try { await navigator.clipboard?.writeText(inviteUrl); } catch { }
   };
 
-  const StatCard = ({
-    icon,
-    label,
-    value,
-    sub,
-    accent = '#1AE080',
-  }: { icon: React.ReactNode; label: string; value: React.ReactNode; sub?: string; accent?: string }) => (
-    <Paper sx={{ p: 2, border: '1px solid', borderColor: '#2a2a2a', bgcolor: '#1a1a1a', minWidth: 220, position: 'relative', overflow: 'hidden', color: '#fff' }}>
-      <Box sx={{ position: 'absolute', inset: 0, opacity: 0.12, background: `radial-gradient(600px 120px at -10% -10%, ${accent}, transparent)` }} />
-      <Stack direction="column" spacing={1} alignItems="flex-start">
-        <Box sx={{
-          width: 36,
-          height: 36,
-          flex: '0 0 36px',
-          aspectRatio: '1 / 1',
-          borderRadius: '50%',
-          bgcolor: accent,
-          color: '#0b0b0b',
-          display: 'inline-flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontSize: 18,
-          boxShadow: `0 0 0 2px rgba(255,255,255,0.06) inset`,
-          '& svg': { width: 20, height: 20 }
-        }}>
-          {icon}
-        </Box>
-        <Box>
-          <Typography variant="overline" sx={{ letterSpacing: 1, color: '#e5e7eb' }}>{label}</Typography>
-          <Typography variant="h4" fontWeight={700} color="white">{value}</Typography>
-          {sub && <Typography variant="body2" sx={{ opacity: 0.7, color: '#d1d5db' }}>{sub}</Typography>}
-        </Box>
-      </Stack>
-    </Paper>
-  );
+  const engagementPercent = useMemo(() => {
+    if (!subsCount) return 0;
+    return Math.round((syncedThisWeek / subsCount) * 100);
+  }, [subsCount, syncedThisWeek]);
+
+  const consistencyPercent = 78; // TODO: replace with workouts/week or retention metric when available.
+  const growthGaugeValue = Math.min(100, Math.max(0, Math.round(Math.abs(completedGrowthPercent))));
 
   return (
     <div className={styles.page}>
@@ -200,11 +237,10 @@ export default function Home() {
               alignItems={{ xs: 'stretch', sm: 'center' }}
               sx={{ flexWrap: 'wrap', gap: { xs: 1, sm: 1.5 } }}
             >
-              <Typography variant="h5" fontWeight={700} color="white">Overview</Typography>
+              <Typography variant="h5" fontWeight={700} color="#1AE080">Welcome back, {trainerName}</Typography>
               <Box sx={{ flex: { xs: 'unset', sm: 1 } }} />
               <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', justifyContent: { xs: 'flex-start', sm: 'flex-end' } }}>
                 {/*<Button variant="outlined" onClick={() => location.assign('/payments')}>Payments</Button>*/}
-                <Button variant="outlined" onClick={() => location.assign('/api/stripe/portal?mode=express')}>Stripe Express</Button>
               </Stack>
             </Stack>
 
@@ -217,15 +253,82 @@ export default function Home() {
               <Alert severity="error">{error}</Alert>
             ) : (
               <>
-                <Box sx={{
-                  display: 'grid',
-                  gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: 'repeat(3, 1fr)', lg: 'repeat(4, 1fr)' },
-                  gap: 2,
-                }}>
-                  <StatCard icon={<GroupIcon fontSize="small" />} label="SUBSCRIBERS" value={<span style={{ color: '#fff' }}>{subsCount}</span>} sub="Total users subscribed to you" accent="#1AE080" />
-                  <StatCard icon={<LayersIcon fontSize="small" />} label="ACTIVE TIERS" value={<span style={{ color: '#fff' }}>{tiersCount}</span>} sub="Manage in Payments" accent="#a78bfa" />
-                  <StatCard icon={<FitnessCenterIcon fontSize="small" />} label="TRAINER ROUTINES" value={<span style={{ color: '#fff' }}>{routinesCount}</span>} sub="Available to assign" accent="#60a5fa" />
-                  <StatCard icon={<PaidIcon fontSize="small" />} label="Revenue" value={<span style={{ color: '#fff' }}>${subsCount * 20}</span>} sub="Approx. based on subscriptions" accent="#34d399" />
+                <Box
+                  sx={{
+                    display: "grid",
+                    gridTemplateColumns: { xs: "1fr", lg: "0.8fr 1fr" },
+                    gap: 3,
+                  }}
+                >
+                  <QuickOverviewRings
+                    metrics={[
+                      {
+                        label: "Engagement (7d)",
+                        value: engagementPercent,
+                        displayValue: `${engagementPercent}%`,
+                        color: "#1AE080",
+                        width: 20,
+                      },
+                      {
+                        label: "Growth (Completed)",
+                        value: growthGaugeValue,
+                        displayValue: `${completedGrowthPercent >= 0 ? "+" : "-"}${completedGrowthPercent}%`,
+                        color: completedGrowthPercent >= 0 ? "#34d399" : "#f87171",
+                        width: 10,
+                      },
+                      {
+                        label: "Consistency",
+                        value: consistencyPercent,
+                        displayValue: `${consistencyPercent}%`,
+                        color: "#60a5fa",
+                        width: 10,
+                      },
+                    ]}
+                  />
+                  <Box
+                    sx={{
+                      display: "grid",
+                      gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" },
+                      gap: 2,
+                    }}
+                  >
+                    <StatCard
+                      icon={<GroupIcon fontSize="small" />}
+                      label="SUBSCRIBERS"
+                      value={<span style={{ color: "#fff" }}>{subsCount}</span>}
+                      sub="Total users subscribed to you"
+                      linkLocation="/users"
+                      linkText="Users screen"
+                      accent="#1AE080"
+                    />
+                    <StatCard
+                      icon={<LayersIcon fontSize="small" />}
+                      label="ACTIVE TIERS"
+                      value={<span style={{ color: "#fff" }}>{tiersCount}</span>}
+                      sub="Manage in "
+                      linkLocation="/payments"
+                      linkText="Payments"
+                      accent="#a78bfa"
+                    />
+                    <StatCard
+                      icon={<FitnessCenterIcon fontSize="small" />}
+                      label="TRAINER ROUTINES"
+                      value={<span style={{ color: "#fff" }}>{routinesCount}</span>}
+                      sub="Available to assign"
+                      linkLocation="/routines"
+                      linkText="Routines"
+                      accent="#60a5fa"
+                    />
+                    <StatCard
+                      icon={<PaidIcon fontSize="small" />}
+                      label="Revenue"
+                      value={<span style={{ color: "#fff" }}>${subsCount * 20}</span>}
+                      sub="Approx. based on subscriptions"
+                      linkLocation="/api/stripe/portal?mode=express"
+                      linkText="Payouts"
+                      accent="#34d399"
+                    />
+                  </Box>
                 </Box>
 
                 {/* Recent activity */}

@@ -373,7 +373,6 @@ export default function UserDetail({
         flex: 1,
         display: "flex",
         flexDirection: "column",
-        borderRadius: 2,
         overflow: "hidden",
         bgcolor: "background.paper",
         color: "text.primary",

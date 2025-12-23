@@ -373,7 +373,7 @@ export default function Routines() {
                 saving={saving}
               />
 
-              <Paper elevation={1} sx={{ flex: 1, display: "flex", flexDirection: "column", borderRadius: 2, overflow: "hidden", bgcolor: "background.paper", color: "text.primary" }}>
+              <Paper elevation={1} sx={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", bgcolor: "background.paper", color: "text.primary" }}>
                 <Box sx={{ flex: 1, overflowY: "auto", p: 2, position: "relative" }}>
                   {selected && (
                     <Box
