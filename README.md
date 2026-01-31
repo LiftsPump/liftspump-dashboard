@@ -304,7 +304,7 @@ The project includes GitHub Actions workflow for automated deployment:
 2. Docker image built and pushed to ECR
 3. ECS task definition updated
 4. Service deployed to ECS cluster
-
+ 
 ---
 
 ## Technical Decisions
